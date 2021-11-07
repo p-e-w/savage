@@ -1,0 +1,11 @@
+[package]
+name = "savage_core"
+version = "0.1.0"
+authors = ["Philipp Emanuel Weidmann <pew@worldwidemann.com>"]
+description = "A primitive computer algebra system (library)"
+repository = "https://github.com/p-e-w/savage"
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+edition = "2021"
+
+[dependencies]
