@@ -9,3 +9,5 @@ license = "AGPL-3.0-or-later"
 edition = "2021"
 
 [dependencies]
+num = "0.4.0"
+nalgebra = "0.29.0"
