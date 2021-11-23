@@ -3,11 +3,27 @@
 
 //! Operators, conversions, and helper functions to make working with expressions easier.
 
-use std::ops::{Add, Div, Mul, Rem, Sub};
+use std::ops::{Add, Div, Mul, Neg, Not, Rem, Sub};
 
 use crate::expression::{
     Complex, Expression, Integer, Matrix, Rational, RationalRepresentation, Vector,
 };
+
+impl Neg for Expression {
+    type Output = Self;
+
+    fn neg(self) -> Self {
+        Expression::Negation(Box::new(self))
+    }
+}
+
+impl Not for Expression {
+    type Output = Self;
+
+    fn not(self) -> Self {
+        Expression::Not(Box::new(self))
+    }
+}
 
 impl Add for Expression {
     type Output = Self;
@@ -79,6 +95,22 @@ impl From<Matrix> for Expression {
     }
 }
 
+impl From<bool> for Expression {
+    fn from(boolean: bool) -> Self {
+        Expression::Boolean(boolean)
+    }
+}
+
+/// Returns an expression representing the variable with the given identifier.
+pub fn var(identifier: impl Into<String>) -> Expression {
+    Expression::Variable(identifier.into())
+}
+
+/// Returns an expression representing the evaluation of the given function at the given arguments.
+pub fn fun(function: impl Into<Expression>, arguments: impl Into<Vec<Expression>>) -> Expression {
+    Expression::Function(Box::new(function.into()), arguments.into())
+}
+
 /// Returns an expression representing the given integer.
 pub fn int(integer: impl Into<Integer>) -> Expression {
     Expression::Integer(integer.into())
@@ -145,4 +177,44 @@ pub fn comd(
 /// Returns an expression representing the first expression raised to the power of the second.
 pub fn pow(base: impl Into<Expression>, exponent: impl Into<Expression>) -> Expression {
     Expression::Power(Box::new(base.into()), Box::new(exponent.into()))
+}
+
+/// Returns an expression representing whether two expressions are equal.
+pub fn eq(left: impl Into<Expression>, right: impl Into<Expression>) -> Expression {
+    Expression::Equal(Box::new(left.into()), Box::new(right.into()))
+}
+
+/// Returns an expression representing whether two expressions are not equal.
+pub fn ne(left: impl Into<Expression>, right: impl Into<Expression>) -> Expression {
+    Expression::NotEqual(Box::new(left.into()), Box::new(right.into()))
+}
+
+/// Returns an expression representing whether the first expression is less than the second.
+pub fn lt(left: impl Into<Expression>, right: impl Into<Expression>) -> Expression {
+    Expression::LessThan(Box::new(left.into()), Box::new(right.into()))
+}
+
+/// Returns an expression representing whether the first expression is less than or equal to the second.
+pub fn le(left: impl Into<Expression>, right: impl Into<Expression>) -> Expression {
+    Expression::LessThanOrEqual(Box::new(left.into()), Box::new(right.into()))
+}
+
+/// Returns an expression representing whether the first expression is greater than the second.
+pub fn gt(left: impl Into<Expression>, right: impl Into<Expression>) -> Expression {
+    Expression::GreaterThan(Box::new(left.into()), Box::new(right.into()))
+}
+
+/// Returns an expression representing whether the first expression is greater than or equal to the second.
+pub fn ge(left: impl Into<Expression>, right: impl Into<Expression>) -> Expression {
+    Expression::GreaterThanOrEqual(Box::new(left.into()), Box::new(right.into()))
+}
+
+/// Returns an expression representing the logical conjunction (AND) of two expressions.
+pub fn and(a: impl Into<Expression>, b: impl Into<Expression>) -> Expression {
+    Expression::And(Box::new(a.into()), Box::new(b.into()))
+}
+
+/// Returns an expression representing the logical disjunction (OR) of two expressions.
+pub fn or(a: impl Into<Expression>, b: impl Into<Expression>) -> Expression {
+    Expression::Or(Box::new(a.into()), Box::new(b.into()))
 }

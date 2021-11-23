@@ -31,6 +31,10 @@ pub enum RationalRepresentation {
 /// Symbolic expression.
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum Expression {
+    /// Variable with identifier.
+    Variable(String),
+    /// Function evaluation with arguments.
+    Function(Box<Expression>, Vec<Expression>),
     /// Integer.
     Integer(Integer),
     /// Rational number with preferred representation.
@@ -41,6 +45,12 @@ pub enum Expression {
     Vector(Vector),
     /// Column-major matrix.
     Matrix(Matrix),
+    /// Boolean value.
+    Boolean(bool),
+    /// Arithmetic negation of an expression.
+    Negation(Box<Expression>),
+    /// Logical negation (NOT) of an expression.
+    Not(Box<Expression>),
     /// Sum of two expressions.
     Sum(Box<Expression>, Box<Expression>),
     /// Difference of two expressions.
@@ -65,8 +75,10 @@ pub enum Expression {
     GreaterThan(Box<Expression>, Box<Expression>),
     /// Whether the first expression is greater than or equal to the second.
     GreaterThanOrEqual(Box<Expression>, Box<Expression>),
-    /// Absolute value of an expression.
-    AbsoluteValue(Box<Expression>),
+    /// Logical conjunction (AND) of two expressions.
+    And(Box<Expression>, Box<Expression>),
+    /// Logical disjunction (OR) of two expressions.
+    Or(Box<Expression>, Box<Expression>),
 }
 
 /// Associativity of an operator expression.
@@ -82,14 +94,16 @@ pub(crate) enum Associativity {
 
 impl Expression {
     /// Returns the precedence (as an integer intended for comparison)
-    /// and associativity of the expression. For non-operator expressions,
-    /// to which the concept of associativity doesn't apply, `Associative`
-    /// is returned.
+    /// and associativity of the expression. For unary or non-operator
+    /// expressions, to which the concept of associativity doesn't apply,
+    /// `Associative` is returned.
     pub(crate) fn precedence_and_associativity(&self) -> (isize, Associativity) {
         use Associativity::*;
         use Expression::*;
 
         match self {
+            Variable(_) => (isize::MAX, Associative),
+            Function(_, _) => (5, Associative),
             Integer(n) => {
                 if n.is_negative() {
                     (2, Associative)
@@ -123,19 +137,35 @@ impl Expression {
             }
             Vector(_) => (isize::MAX, Associative),
             Matrix(_) => (isize::MAX, Associative),
+            Boolean(_) => (isize::MAX, Associative),
+            Negation(_) => (3, Associative),
+            Not(_) => (3, Associative),
             Sum(_, _) => (1, Associative),
             Difference(_, _) => (1, LeftAssociative),
             Product(_, _) => (2, Associative),
             Quotient(_, _) => (2, LeftAssociative),
             Remainder(_, _) => (2, LeftAssociative),
-            Power(_, _) => (3, RightAssociative),
+            Power(_, _) => (4, RightAssociative),
             Equal(_, _) => (0, Associative),
             NotEqual(_, _) => (0, Associative),
             LessThan(_, _) => (0, Associative),
             LessThanOrEqual(_, _) => (0, Associative),
             GreaterThan(_, _) => (0, Associative),
             GreaterThanOrEqual(_, _) => (0, Associative),
-            AbsoluteValue(_) => (isize::MAX, Associative),
+            And(_, _) => (-1, Associative),
+            Or(_, _) => (-2, Associative),
         }
+    }
+
+    /// Returns the precedence (as an integer intended for comparison) of the expression.
+    pub(crate) fn precedence(&self) -> isize {
+        self.precedence_and_associativity().0
+    }
+
+    /// Returns the associativity of the expression.
+    /// For unary or non-operator expressions, to which the concept
+    /// of associativity doesn't apply, `Associative` is returned.
+    pub(crate) fn associativity(&self) -> Associativity {
+        self.precedence_and_associativity().1
     }
 }

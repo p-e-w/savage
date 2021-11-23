@@ -39,18 +39,30 @@ fn decimal_representation(x: &Rational) -> Option<(Integer, usize)> {
 }
 
 impl Expression {
-    /// Formats the expression as an infix operator with the minimally necessary parentheses.
+    /// Formats the expression as a unary prefix operator with the minimally necessary parentheses.
+    fn fmt_prefix(&self, f: &mut Formatter<'_>, symbol: &str, a: &Self) -> Result {
+        let a_needs_parentheses = a.precedence() <= self.precedence();
+
+        write!(
+            f,
+            "{}{}{}{}",
+            symbol,
+            if a_needs_parentheses { "(" } else { "" },
+            a,
+            if a_needs_parentheses { ")" } else { "" },
+        )
+    }
+
+    /// Formats the expression as a binary infix operator with the minimally necessary parentheses.
     fn fmt_infix(&self, f: &mut Formatter<'_>, symbol: &str, a: &Self, b: &Self) -> Result {
         use crate::expression::Associativity::*;
 
-        let (self_precedence, self_associativity) = self.precedence_and_associativity();
-        let (a_precedence, _) = a.precedence_and_associativity();
-        let (b_precedence, _) = b.precedence_and_associativity();
+        let a_needs_parentheses = (a.precedence() < self.precedence())
+            || ((a.precedence() == self.precedence())
+                && (self.associativity() == RightAssociative));
 
-        let a_needs_parentheses = (a_precedence < self_precedence)
-            || ((a_precedence == self_precedence) && (self_associativity == RightAssociative));
-        let b_needs_parentheses = (b_precedence < self_precedence)
-            || ((b_precedence == self_precedence) && (self_associativity == LeftAssociative));
+        let b_needs_parentheses = (b.precedence() < self.precedence())
+            || ((b.precedence() == self.precedence()) && (self.associativity() == LeftAssociative));
 
         write!(
             f,
@@ -71,6 +83,23 @@ impl Display for Expression {
         use crate::expression::{Expression::*, RationalRepresentation::*};
 
         match self {
+            Variable(identifier) => write!(f, "{}", identifier),
+            Function(function, arguments) => {
+                let function_needs_parentheses = function.precedence() < isize::MAX;
+
+                write!(
+                    f,
+                    "{}{}{}({})",
+                    if function_needs_parentheses { "(" } else { "" },
+                    function,
+                    if function_needs_parentheses { ")" } else { "" },
+                    arguments
+                        .iter()
+                        .map(|a| a.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                )
+            }
             Integer(n) => write!(f, "{}", n),
             Rational(x, representation) => {
                 match representation {
@@ -140,6 +169,9 @@ impl Display for Expression {
             }
             Vector(v) => write!(f, "{}", v), // TODO
             Matrix(m) => write!(f, "{}", m), // TODO
+            Boolean(boolean) => write!(f, "{}", boolean),
+            Negation(a) => self.fmt_prefix(f, "-", a),
+            Not(a) => self.fmt_prefix(f, "!", a),
             Sum(a, b) => self.fmt_infix(f, "+", a, b),
             Difference(a, b) => self.fmt_infix(f, "-", a, b),
             Product(a, b) => self.fmt_infix(f, "*", a, b),
@@ -152,19 +184,43 @@ impl Display for Expression {
             LessThanOrEqual(a, b) => self.fmt_infix(f, "<=", a, b),
             GreaterThan(a, b) => self.fmt_infix(f, ">", a, b),
             GreaterThanOrEqual(a, b) => self.fmt_infix(f, ">=", a, b),
-            AbsoluteValue(a) => write!(f, "|{}|", a),
+            And(a, b) => self.fmt_infix(f, "&&", a, b),
+            Or(a, b) => self.fmt_infix(f, "||", a, b),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::expression::Expression;
+    use crate::expression::{Expression, Expression::*};
     use crate::helpers::*;
 
     #[track_caller]
     fn t(expression: Expression, string: &str) {
         assert_eq!(expression.to_string(), string);
+    }
+
+    #[test]
+    fn variables() {
+        t(var("a"), "a");
+        t(var("A"), "A");
+        t(var("Named_Variable"), "Named_Variable");
+    }
+
+    #[test]
+    fn functions() {
+        t(fun(var("f"), []), "f()");
+        t(fun(var("f"), [var("a")]), "f(a)");
+        t(fun(var("f"), [var("a"), int(1)]), "f(a, 1)");
+        t(
+            fun(
+                var("f"),
+                [fun(var("g"), [var("a")]), fun(var("h"), [var("b")])],
+            ),
+            "f(g(a), h(b))",
+        );
+        t(fun(fun(var("f"), [var("a")]), [var("b")]), "(f(a))(b)");
+        t(fun(var("f") + var("g"), [var("a")]), "(f + g)(a)");
     }
 
     #[test]
@@ -239,7 +295,18 @@ mod tests {
     }
 
     #[test]
+    fn booleans() {
+        t(Boolean(true), "true");
+        t(Boolean(false), "false");
+    }
+
+    #[test]
     fn operators() {
+        t(-int(1), "-1");
+        t(-(-int(1)), "-(-1)");
+        t(!var("A"), "!A");
+        t(!(!var("A")), "!(!A)");
+
         t((int(1) + int(2)) + int(3), "1 + 2 + 3");
         t((int(1) + int(2)) - int(3), "1 + 2 - 3");
         t((int(1) - int(2)) + int(3), "1 - 2 + 3");
@@ -279,5 +346,16 @@ mod tests {
         t(com(1, 1, 1, 1) * int(2), "(1 + i) * 2");
         t(com(1, 1, -1, 1) - int(2), "1 - i - 2");
         t(int(2) - com(1, 1, -1, 1), "2 - (1 - i)");
+
+        // TODO: Comparison operators!
+
+        t(and(and(var("A"), var("B")), var("C")), "A && B && C");
+        t(or(and(var("A"), var("B")), var("C")), "A && B || C");
+        t(and(or(var("A"), var("B")), var("C")), "(A || B) && C");
+        t(or(or(var("A"), var("B")), var("C")), "A || B || C");
+        t(and(var("A"), and(var("B"), var("C"))), "A && B && C");
+        t(and(var("A"), or(var("B"), var("C"))), "A && (B || C)");
+        t(or(var("A"), and(var("B"), var("C"))), "A || B && C");
+        t(or(var("A"), or(var("B"), var("C"))), "A || B || C");
     }
 }
