@@ -28,6 +28,20 @@ pub enum RationalRepresentation {
     Decimal,
 }
 
+impl RationalRepresentation {
+    /// Returns the preferred representation for the result of an operation
+    /// on two numbers with representations `self` and `other`.
+    pub(crate) fn merge(self, other: Self) -> Self {
+        use RationalRepresentation::*;
+
+        if self == Decimal || other == Decimal {
+            Decimal
+        } else {
+            Fraction
+        }
+    }
+}
+
 /// Symbolic expression.
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum Expression {
@@ -81,6 +95,21 @@ pub enum Expression {
     Or(Box<Expression>, Box<Expression>),
 }
 
+/// Basic expression type designed to make evaluating expressions easier.
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub(crate) enum Type {
+    /// Number with preferred representation for rational parts.
+    Number(Complex, RationalRepresentation),
+    /// Column-major matrix.
+    Matrix(Matrix),
+    /// Boolean expression with value (if available).
+    Boolean(Option<bool>),
+    /// Arithmetic expression (in particular, this expression does *not* have a boolean value).
+    Arithmetic,
+    /// Expression that cannot be assigned to any of the above types with certainty.
+    Unknown,
+}
+
 /// Associativity of an operator expression.
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub(crate) enum Associativity {
@@ -93,6 +122,40 @@ pub(crate) enum Associativity {
 }
 
 impl Expression {
+    /// Returns the basic type of the expression.
+    pub(crate) fn typ(&self) -> Type {
+        use Expression::*;
+        use RationalRepresentation::*;
+        use Type::{Arithmetic, Boolean as Bool, Matrix as Mat, Number as Num, Unknown};
+
+        match self {
+            Variable(_) => Unknown,
+            Function(_, _) => Unknown,
+            Integer(n) => Num(self::Rational::from_integer(n.clone()).into(), Fraction),
+            Rational(x, representation) => Num(x.into(), *representation),
+            Complex(z, representation) => Num(z.clone(), *representation),
+            Vector(v) => Mat(self::Matrix::from_columns(&[v.clone()])),
+            Matrix(m) => Mat(m.clone()),
+            Boolean(boolean) => Bool(Some(*boolean)),
+            Negation(_) => Arithmetic,
+            Not(_) => Bool(None),
+            Sum(_, _) => Arithmetic,
+            Difference(_, _) => Arithmetic,
+            Product(_, _) => Arithmetic,
+            Quotient(_, _) => Arithmetic,
+            Remainder(_, _) => Arithmetic,
+            Power(_, _) => Arithmetic,
+            Equal(_, _) => Bool(None),
+            NotEqual(_, _) => Bool(None),
+            LessThan(_, _) => Bool(None),
+            LessThanOrEqual(_, _) => Bool(None),
+            GreaterThan(_, _) => Bool(None),
+            GreaterThanOrEqual(_, _) => Bool(None),
+            And(_, _) => Bool(None),
+            Or(_, _) => Bool(None),
+        }
+    }
+
     /// Returns the precedence (as an integer intended for comparison)
     /// and associativity of the expression. For unary or non-operator
     /// expressions, to which the concept of associativity doesn't apply,
