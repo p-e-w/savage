@@ -1,8 +1,34 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2021  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
-use savage_core::helpers::*;
+use std::collections::HashMap;
+
+use rustyline::{error::ReadlineError, Editor};
+use savage_core::expression::Expression;
 
 fn main() {
-    println!("{}", int(123) + rat(456, 789));
+    let mut editor = Editor::<()>::new();
+
+    loop {
+        match editor.readline("> ") {
+            Ok(line) => {
+                editor.add_history_entry(line.trim());
+
+                match line.parse::<Expression>() {
+                    Ok(expression) => match expression.evaluate(HashMap::new()) {
+                        Ok(result) => println!("{}", result),
+                        Err(error) => println!("Error: {:#?}", error),
+                    },
+                    Err(error) => println!("Error: {:#?}", error),
+                }
+            }
+            Err(ReadlineError::Interrupted | ReadlineError::Eof) => {
+                break;
+            }
+            Err(error) => {
+                println!("Error: {:#?}", error);
+                break;
+            }
+        }
+    }
 }

@@ -9,4 +9,5 @@ license = "AGPL-3.0-or-later"
 edition = "2021"
 
 [dependencies]
-savage_core = { path = "../savage_core" }
+rustyline = "9.0.0"
+savage_core = { path = "../savage_core", version = "0.1.0" }
