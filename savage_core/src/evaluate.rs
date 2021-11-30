@@ -226,16 +226,14 @@ impl Expression {
                                 base: a_original.clone(),
                                 exponent: b_original.clone(),
                             })
+                        } else if let Some(b) = b.to_i32() {
+                            Ok(Complex(a.powi(b), representation))
                         } else {
-                            if let Some(b) = b.to_i32() {
-                                Ok(Complex(a.powi(b), representation))
-                            } else {
-                                // TODO
-                                Ok(Power(
-                                    Box::new(a_evaluated.clone()),
-                                    Box::new(b_evaluated.clone()),
-                                ))
-                            }
+                            // TODO
+                            Ok(Power(
+                                Box::new(a_evaluated.clone()),
+                                Box::new(b_evaluated.clone()),
+                            ))
                         }
                     }
                     Equal(_, _) => Ok(Boolean(a == b)),
