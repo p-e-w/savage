@@ -19,7 +19,8 @@ fn parser() -> impl Parser<char, Expression, Error = Simple<char>> {
                 "false" => Expression::Boolean(false),
                 _ => var(identifier),
             })
-            .labelled("identifier");
+            .labelled("identifier")
+            .boxed();
 
         let number = text::int(10)
             .chain(just('.').ignore_then(text::digits(10)).or_not())
@@ -35,12 +36,14 @@ fn parser() -> impl Parser<char, Expression, Error = Simple<char>> {
                 }
                 _ => unreachable!(),
             })
-            .labelled("number");
+            .labelled("number")
+            .boxed();
 
         let atomic_expression = identifier
             .or(number)
             .or(expression.clone().delimited_by('(', ')'))
-            .padded();
+            .padded()
+            .boxed();
 
         let function = atomic_expression
             .clone()
@@ -54,7 +57,8 @@ fn parser() -> impl Parser<char, Expression, Error = Simple<char>> {
             .map(|(function, arguments)| fun(function, arguments))
             .labelled("function")
             .or(atomic_expression)
-            .padded();
+            .padded()
+            .boxed();
 
         let power = function
             .clone()
@@ -62,7 +66,8 @@ fn parser() -> impl Parser<char, Expression, Error = Simple<char>> {
             .repeated()
             .then(function)
             .foldr(pow)
-            .labelled("power");
+            .labelled("power")
+            .boxed();
 
         let negation = just('-')
             .ignore_then(power.clone())
@@ -70,7 +75,8 @@ fn parser() -> impl Parser<char, Expression, Error = Simple<char>> {
             .or(just('!').ignore_then(power.clone()).map(|a| !a))
             .labelled("negation")
             .or(power)
-            .padded();
+            .padded()
+            .boxed();
 
         let product_or_quotient_or_remainder = negation
             .clone()
@@ -87,7 +93,8 @@ fn parser() -> impl Parser<char, Expression, Error = Simple<char>> {
                 '%' => a % b,
                 _ => unreachable!(),
             })
-            .labelled("product_or_quotient_or_remainder");
+            .labelled("product_or_quotient_or_remainder")
+            .boxed();
 
         let sum_or_difference = product_or_quotient_or_remainder
             .clone()
@@ -102,7 +109,8 @@ fn parser() -> impl Parser<char, Expression, Error = Simple<char>> {
                 '-' => a - b,
                 _ => unreachable!(),
             })
-            .labelled("sum_or_difference");
+            .labelled("sum_or_difference")
+            .boxed();
 
         let comparison = sum_or_difference
             .clone()
@@ -127,7 +135,8 @@ fn parser() -> impl Parser<char, Expression, Error = Simple<char>> {
                 ">=" => ge(a, b),
                 _ => unreachable!(),
             })
-            .labelled("comparison");
+            .labelled("comparison")
+            .boxed();
 
         let conjunction = comparison
             .clone()
@@ -138,7 +147,8 @@ fn parser() -> impl Parser<char, Expression, Error = Simple<char>> {
                     .repeated(),
             )
             .foldl(and)
-            .labelled("conjunction");
+            .labelled("conjunction")
+            .boxed();
 
         let disjunction = conjunction
             .clone()
@@ -149,7 +159,8 @@ fn parser() -> impl Parser<char, Expression, Error = Simple<char>> {
                     .repeated(),
             )
             .foldl(or)
-            .labelled("disjunction");
+            .labelled("disjunction")
+            .boxed();
 
         disjunction
     })
