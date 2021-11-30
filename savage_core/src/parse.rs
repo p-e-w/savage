@@ -10,6 +10,7 @@ use crate::{
     helpers::*,
 };
 
+#[allow(clippy::let_and_return)]
 fn parser() -> impl Parser<char, Expression, Error = Simple<char>> {
     recursive(|expression| {
         let identifier = text::ident()
@@ -60,7 +61,7 @@ fn parser() -> impl Parser<char, Expression, Error = Simple<char>> {
             .then_ignore(just('^'))
             .repeated()
             .then(function)
-            .foldr(|a, b| pow(a, b))
+            .foldr(pow)
             .labelled("power");
 
         let negation = just('-')
@@ -136,7 +137,7 @@ fn parser() -> impl Parser<char, Expression, Error = Simple<char>> {
                     .ignore_then(comparison)
                     .repeated(),
             )
-            .foldl(|a, b| and(a, b))
+            .foldl(and)
             .labelled("conjunction");
 
         let disjunction = conjunction
@@ -147,7 +148,7 @@ fn parser() -> impl Parser<char, Expression, Error = Simple<char>> {
                     .ignore_then(conjunction)
                     .repeated(),
             )
-            .foldl(|a, b| or(a, b))
+            .foldl(or)
             .labelled("disjunction");
 
         disjunction

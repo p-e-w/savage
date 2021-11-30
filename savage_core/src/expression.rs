@@ -175,7 +175,7 @@ impl Expression {
                 }
             }
             Rational(x, _) => {
-                if self.to_string().contains("/") {
+                if self.to_string().contains('/') {
                     (2, LeftAssociative)
                 } else if x.is_negative() {
                     (2, Associative)
@@ -185,12 +185,12 @@ impl Expression {
             }
             Complex(z, _) => {
                 if !z.re.is_zero() && !z.im.is_zero() {
-                    if self.to_string().contains("+") {
+                    if self.to_string().contains('+') {
                         (1, Associative)
                     } else {
                         (1, LeftAssociative)
                     }
-                } else if self.to_string().contains("/") {
+                } else if self.to_string().contains('/') {
                     (2, LeftAssociative)
                 } else if z.re.is_negative() || !z.im.is_zero() {
                     (2, Associative)
