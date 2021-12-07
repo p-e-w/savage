@@ -167,8 +167,28 @@ impl Display for Expression {
                     )
                 }
             }
-            Vector(v) => write!(f, "{}", v), // TODO
-            Matrix(m) => write!(f, "{}", m), // TODO
+            Vector(v) => write!(
+                f,
+                "[{}]",
+                v.iter()
+                    .map(|element| element.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            ),
+            Matrix(m) => write!(
+                f,
+                "[{}]",
+                m.row_iter()
+                    .map(|row| format!(
+                        "[{}]",
+                        row.iter()
+                            .map(|element| element.to_string())
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                    ))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            ),
             Boolean(boolean) => write!(f, "{}", boolean),
             Negation(a) => self.fmt_prefix(f, "-", a),
             Not(a) => self.fmt_prefix(f, "!", a),
@@ -192,6 +212,8 @@ impl Display for Expression {
 
 #[cfg(test)]
 mod tests {
+    use nalgebra::{dmatrix, dvector};
+
     use crate::expression::{Expression, Expression::*};
     use crate::helpers::*;
 
@@ -286,12 +308,38 @@ mod tests {
 
     #[test]
     fn vectors() {
-        // TODO
+        t(Vector(dvector![]), "[]");
+        t(Vector(dvector![int(1)]), "[1]");
+        t(Vector(dvector![int(1), int(2), int(3)]), "[1, 2, 3]");
+        t(
+            Vector(dvector![
+                int(1),
+                fun(var("f"), [var("a"), int(1)]),
+                Vector(dvector![int(1), int(2), int(3)])
+            ]),
+            "[1, f(a, 1), [1, 2, 3]]",
+        );
     }
 
     #[test]
     fn matrices() {
-        // TODO
+        t(Matrix(dmatrix![]), "[]");
+        t(Matrix(dmatrix![int(1)]), "[[1]]");
+        t(Matrix(dmatrix![int(1), int(2), int(3)]), "[[1, 2, 3]]");
+        t(
+            Matrix(dmatrix![
+                int(1), int(2), int(3);
+                int(4), int(5), int(6)
+            ]),
+            "[[1, 2, 3], [4, 5, 6]]",
+        );
+        t(
+            Matrix(dmatrix![
+                fun(var("f"), []), int(2), Vector(dvector![int(1)]);
+                Matrix(dmatrix![int(1)]), comd(123, -40, 1, 3), int(6)
+            ]),
+            "[[f(), 2, [1]], [[[1]], 1/3*i - 3.075, 6]]",
+        );
     }
 
     #[test]

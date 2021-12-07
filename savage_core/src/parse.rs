@@ -6,7 +6,7 @@ use std::str::FromStr;
 use chumsky::prelude::*;
 
 use crate::{
-    expression::{Expression, Integer},
+    expression::{Expression, Integer, Matrix, Vector},
     helpers::*,
 };
 
@@ -39,8 +39,38 @@ fn parser() -> impl Parser<char, Expression, Error = Simple<char>> {
             .labelled("number")
             .boxed();
 
+        let vector_or_matrix = expression
+            .clone()
+            .separated_by(just(','))
+            .padded()
+            .delimited_by('[', ']')
+            .map(|elements| {
+                if let Some(Expression::Vector(v)) = elements.first() {
+                    // If all elements of the vector are themselves vectors, and have the same size,
+                    // they are interpreted as the rows of a rectangular matrix.
+                    let row_size = v.len();
+                    let mut rows = Vec::new();
+
+                    for element in &elements {
+                        match element {
+                            Expression::Vector(v) if v.len() == row_size => {
+                                rows.push(v.transpose());
+                            }
+                            _ => return Expression::Vector(Vector::from_vec(elements)),
+                        }
+                    }
+
+                    Expression::Matrix(Matrix::from_rows(&rows))
+                } else {
+                    Expression::Vector(Vector::from_vec(elements))
+                }
+            })
+            .labelled("vector_or_matrix")
+            .boxed();
+
         let atomic_expression = identifier
             .or(number)
+            .or(vector_or_matrix)
             .or(expression.clone().delimited_by('(', ')'))
             .padded()
             .boxed();
@@ -177,6 +207,8 @@ impl FromStr for Expression {
 
 #[cfg(test)]
 mod tests {
+    use nalgebra::{dmatrix, dvector};
+
     use crate::expression::{Expression, Expression::*};
     use crate::helpers::*;
 
@@ -229,12 +261,37 @@ mod tests {
 
     #[test]
     fn vectors() {
-        // TODO
+        t(" [ ] ", Vector(dvector![]));
+        t("[   1]", Vector(dvector![int(1)]));
+        t(" [1,2,   3 ]", Vector(dvector![int(1), int(2), int(3)]));
+        t(
+            "[  1,f(a,1),[   1,2,3  ] ]  ",
+            Vector(dvector![
+                int(1),
+                fun(var("f"), [var("a"), int(1)]),
+                Vector(dvector![int(1), int(2), int(3)])
+            ]),
+        );
     }
 
     #[test]
     fn matrices() {
-        // TODO
+        t("[[1   ]   ]   ", Matrix(dmatrix![int(1)]));
+        t("[ [ 1,2,3 ] ]", Matrix(dmatrix![int(1), int(2), int(3)]));
+        t(
+            " [[  1, 2,3 ],[ 4,5, 6]]",
+            Matrix(dmatrix![
+                int(1), int(2), int(3);
+                int(4), int(5), int(6)
+            ]),
+        );
+        t(
+            "  [[f ( ) ,2, [1 ] ], [[ [ 1]],3.075,6] ] ",
+            Matrix(dmatrix![
+                fun(var("f"), []), int(2), Vector(dvector![int(1)]);
+                Matrix(dmatrix![int(1)]), ratd(123, 40), int(6)
+            ]),
+        );
     }
 
     #[test]

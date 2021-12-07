@@ -269,6 +269,48 @@ impl Expression {
                 }
             }
 
+            (Sum(_, _) | Difference(_, _), Mat(a), Mat(b)) => {
+                if a.shape() == b.shape() {
+                    Ok(Matrix(match self {
+                        Sum(_, _) => a + b,
+                        Difference(_, _) => a - b,
+                        _ => unreachable!(),
+                    }))
+                } else {
+                    Err(IncompatibleOperands {
+                        expression: self.clone(),
+                        operand_1: a_original.clone(),
+                        operand_2: b_original.clone(),
+                    })
+                }
+            }
+
+            (Product(_, _), Mat(a), Mat(b)) => {
+                if a.is_empty() && b.is_empty() {
+                    Ok(Matrix(a))
+                } else if !a.is_empty() && !b.is_empty() && a.ncols() == b.nrows() {
+                    Ok(Matrix(crate::expression::Matrix::from_fn(
+                        a.nrows(),
+                        b.ncols(),
+                        |i, j| {
+                            (0..a.ncols())
+                                .map(|k| a[(i, k)].clone() * b[(k, j)].clone())
+                                .reduce(|a, b| a + b)
+                                .unwrap()
+                        },
+                    )))
+                } else {
+                    Err(IncompatibleOperands {
+                        expression: self.clone(),
+                        operand_1: a_original.clone(),
+                        operand_2: b_original.clone(),
+                    })
+                }
+            }
+
+            (Product(_, _), Mat(a), _) => Ok(Matrix(a.map(|element| element * b.clone()))),
+            (Product(_, _), _, Mat(b)) => Ok(Matrix(b.map(|element| a.clone() * element))),
+
             (Equal(_, _), Bool(Some(a)), Bool(Some(b))) => Ok(Boolean(a == b)),
             (NotEqual(_, _), Bool(Some(a)), Bool(Some(b))) => Ok(Boolean(a != b)),
             (And(_, _), Bool(Some(a)), Bool(Some(b))) => Ok(Boolean(a && b)),
@@ -328,8 +370,36 @@ impl Expression {
             } else {
                 self.clone()
             }),
-            Vector(_) => Ok(self.clone()), // TODO: Evaluate each element!
-            Matrix(_) => Ok(self.clone()), // TODO: Evaluate each element!
+            Vector(v) => {
+                let mut elements = Vec::new();
+
+                for element in v.iter() {
+                    elements.push(element.evaluate_step(context)?);
+                }
+
+                Ok(Vector(crate::expression::Vector::from_vec(elements)))
+            }
+            Matrix(m) => {
+                let mut columns = Vec::new();
+
+                for column in m.column_iter() {
+                    let mut elements = Vec::new();
+
+                    for element in column.iter() {
+                        elements.push(element.evaluate_step(context)?);
+                    }
+
+                    columns.push(crate::expression::Vector::from_vec(elements));
+                }
+
+                Ok(if columns.is_empty() {
+                    Vector(crate::expression::Vector::from_vec(Vec::new()))
+                } else if columns.len() == 1 {
+                    Vector(columns.remove(0))
+                } else {
+                    Matrix(crate::expression::Matrix::from_columns(&columns))
+                })
+            }
             Boolean(_) => Ok(self.clone()),
             Negation(a) => self.evaluate_step_unary(a, context),
             Not(a) => self.evaluate_step_unary(a, context),
@@ -450,8 +520,41 @@ mod tests {
         t("-2 ^ 4", "-16");
         t("(-2) ^ 4", "16");
         t("0.5 ^ 4", "0.0625");
-        t("987654321123456789 ^ 5", "939777062588963894467852986656442266299580252508947542802086985660852317355013741720482949");
-        t("3 ^ 4 ^ 5", "373391848741020043532959754184866588225409776783734007750636931722079040617265251229993688938803977220468765065431475158108727054592160858581351336982809187314191748594262580938807019951956404285571818041046681288797402925517668012340617298396574731619152386723046235125934896058590588284654793540505936202376547807442730582144527058988756251452817793413352141920744623027518729185432862375737063985485319476416926263819972887006907013899256524297198527698749274196276811060702333710356481");
+        t(
+            "987654321123456789 ^ 5",
+            "939777062588963894467852986656442266299580252508947542802086985660852317355013741720482949",
+        );
+        t(
+            "3 ^ 4 ^ 5",
+            "373391848741020043532959754184866588225409776783734007750636931722079040617265251229993688938803977220468765065431475158108727054592160858581351336982809187314191748594262580938807019951956404285571818041046681288797402925517668012340617298396574731619152386723046235125934896058590588284654793540505936202376547807442730582144527058988756251452817793413352141920744623027518729185432862375737063985485319476416926263819972887006907013899256524297198527698749274196276811060702333710356481",
+        );
+    }
+
+    #[test]
+    fn linear_algebra() {
+        t("[] + []", "[]");
+        t("[] - []", "[]");
+        t("[] * []", "[]");
+        t("[] * 1", "[]");
+        t("1 * []", "[]");
+
+        t("[1] + [2]", "[3]");
+        t("[1] - [2]", "[-1]");
+        t("[1] * [2]", "[2]");
+        t("[1] * 2", "[2]");
+        t("1 * [2]", "[2]");
+
+        t("[1, 2] + [3, 4]", "[4, 6]");
+        t("[1, 2] - [3, 4]", "[-2, -2]");
+        t("[1, 2] * [[3, 4]]", "[[3, 4], [6, 8]]");
+        t("[[1, 2]] * [3, 4]", "[11]");
+        t("2 * [3, 4]", "[6, 8]");
+        t("[2, 3] * 4", "[8, 12]");
+
+        t(
+            "[[a, b], [c, d], [e, f]] * [[5, 6], [7, 8]]",
+            "[[a * 5 + b * 7, a * 6 + b * 8], [c * 5 + d * 7, c * 6 + d * 8], [e * 5 + f * 7, e * 6 + f * 8]]",
+        );
     }
 
     #[test]

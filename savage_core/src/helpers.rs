@@ -3,7 +3,9 @@
 
 //! Operators, conversions, and helper functions to make working with expressions easier.
 
-use std::ops::{Add, Div, Mul, Neg, Not, Rem, Sub};
+use std::ops::{
+    Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Rem, RemAssign, Sub, SubAssign,
+};
 
 use crate::expression::{
     Complex, Expression, Integer, Matrix, Rational, RationalRepresentation, Vector,
@@ -33,11 +35,23 @@ impl Add for Expression {
     }
 }
 
+impl AddAssign for Expression {
+    fn add_assign(&mut self, other: Self) {
+        *self = self.clone() + other;
+    }
+}
+
 impl Sub for Expression {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self {
         Expression::Difference(Box::new(self), Box::new(other))
+    }
+}
+
+impl SubAssign for Expression {
+    fn sub_assign(&mut self, other: Self) {
+        *self = self.clone() - other;
     }
 }
 
@@ -49,6 +63,12 @@ impl Mul for Expression {
     }
 }
 
+impl MulAssign for Expression {
+    fn mul_assign(&mut self, other: Self) {
+        *self = self.clone() * other;
+    }
+}
+
 impl Div for Expression {
     type Output = Self;
 
@@ -57,11 +77,23 @@ impl Div for Expression {
     }
 }
 
+impl DivAssign for Expression {
+    fn div_assign(&mut self, other: Self) {
+        *self = self.clone() / other;
+    }
+}
+
 impl Rem for Expression {
     type Output = Self;
 
     fn rem(self, other: Self) -> Self {
         Expression::Remainder(Box::new(self), Box::new(other))
+    }
+}
+
+impl RemAssign for Expression {
+    fn rem_assign(&mut self, other: Self) {
+        *self = self.clone() % other;
     }
 }
 
