@@ -12,7 +12,13 @@ fn main() {
     loop {
         match editor.readline("> ") {
             Ok(line) => {
-                editor.add_history_entry(line.trim());
+                let line = line.trim();
+
+                if line.is_empty() {
+                    continue;
+                }
+
+                editor.add_history_entry(line);
 
                 match line.parse::<Expression>() {
                     Ok(expression) => match expression.evaluate(HashMap::new()) {
