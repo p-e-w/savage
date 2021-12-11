@@ -11,4 +11,5 @@ edition = "2021"
 [dependencies]
 directories = "4.0.1"
 rustyline = "9.0.0"
+rustyline-derive = "0.6.0"
 savage_core = { path = "../savage_core", version = "0.1.0" }

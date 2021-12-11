@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2021  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
+mod input;
+
 use std::{collections::HashMap, fs};
 
 use directories::ProjectDirs;
 use rustyline::{error::ReadlineError, Editor};
 use savage_core::expression::Expression;
+
+use crate::input::InputHelper;
 
 fn main() {
     let history_path = ProjectDirs::from("com.worldwidemann", "", "Savage")
@@ -13,7 +17,9 @@ fn main() {
         .data_dir()
         .join("history");
 
-    let mut editor = Editor::<()>::new();
+    let mut editor = Editor::new();
+
+    editor.set_helper(Some(InputHelper {}));
 
     editor.load_history(&history_path).ok();
 

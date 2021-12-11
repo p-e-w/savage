@@ -4,5 +4,5 @@
 mod evaluate;
 pub mod expression;
 pub mod helpers;
-mod parse;
+pub mod parse;
 mod print;

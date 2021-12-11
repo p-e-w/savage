@@ -3,6 +3,7 @@
 
 use std::str::FromStr;
 
+pub use chumsky::error::{Simple as Error, SimpleReason as ErrorReason};
 use chumsky::prelude::*;
 
 use crate::{
@@ -11,7 +12,7 @@ use crate::{
 };
 
 #[allow(clippy::let_and_return)]
-fn parser() -> impl Parser<char, Expression, Error = Simple<char>> {
+fn parser() -> impl Parser<char, Expression, Error = Error<char>> {
     recursive(|expression| {
         let identifier = text::ident()
             .map(|identifier: String| match identifier.as_str() {
