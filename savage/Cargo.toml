@@ -9,7 +9,10 @@ license = "AGPL-3.0-or-later"
 edition = "2021"
 
 [dependencies]
+lazy_static = "1.4.0"
 directories = "4.0.1"
+ansi_term = "0.12.1"
 rustyline = "9.0.0"
 rustyline-derive = "0.6.0"
+regex = "1.5.4"
 savage_core = { path = "../savage_core", version = "0.1.0" }
