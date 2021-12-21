@@ -5,6 +5,7 @@ mod input;
 
 use std::{collections::HashMap, fs};
 
+use ansi_term::Style;
 use directories::ProjectDirs;
 use rustyline::{error::ReadlineError, Editor};
 use savage_core::expression::Expression;
@@ -22,6 +23,18 @@ fn main() {
     editor.set_helper(Some(InputHelper {}));
 
     editor.load_history(&history_path).ok();
+
+    println!(
+        "Savage Computer Algebra System {}",
+        env!("CARGO_PKG_VERSION"),
+    );
+
+    println!(
+        "Enter {} for help, press {} to quit, {} to cancel evaluation",
+        Style::new().bold().paint("?"),
+        Style::new().bold().paint("Ctrl+D"),
+        Style::new().bold().paint("Ctrl+C"),
+    );
 
     loop {
         match editor.readline("> ") {
