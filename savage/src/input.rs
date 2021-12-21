@@ -173,7 +173,7 @@ impl Validator for InputHelper {
         // as part of the regular input processing step.
         let input = ctx.input();
 
-        if input.trim().is_empty() || input.ends_with("\n") {
+        if input.trim().is_empty() || input.ends_with('\n') {
             return Ok(ValidationResult::Valid(None));
         }
 
