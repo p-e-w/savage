@@ -93,14 +93,52 @@ impl Highlighter for InputHelper {
         Cow::Owned(Style::new().bold().paint(prompt).to_string())
     }
 
-    fn highlight<'l>(&self, line: &'l str, _pos: usize) -> Cow<'l, str> {
+    fn highlight<'l>(&self, line: &'l str, pos: usize) -> Cow<'l, str> {
         use ansi_term::Colour::*;
         use TokenType::*;
 
+        let matching_pos = if pos < line.len() {
+            let line_bytes = line.as_bytes();
+
+            let mut matching_pos = None;
+
+            'outer: for (open, close) in [(b'(', b')'), (b'[', b']')] {
+                let (range, open, close): (Box<dyn Iterator<Item = usize>>, _, _) =
+                    if line_bytes[pos] == open {
+                        (Box::new(pos + 1..line_bytes.len()), open, close)
+                    } else if line_bytes[pos] == close {
+                        (Box::new((0..pos).rev()), close, open)
+                    } else {
+                        continue;
+                    };
+
+                let mut closes_needed = 1;
+
+                for i in range {
+                    if line_bytes[i] == open {
+                        closes_needed += 1;
+                    } else if line_bytes[i] == close {
+                        closes_needed -= 1;
+
+                        if closes_needed == 0 {
+                            matching_pos = Some(i);
+                            break 'outer;
+                        }
+                    }
+                }
+            }
+
+            matching_pos
+        } else {
+            None
+        };
+
         let mut highlighted_line = String::new();
 
+        let mut token_pos = 0;
+
         for (token, token_type) in tokenize(line) {
-            let style = match token_type {
+            let mut style = match token_type {
                 Literal => Cyan.into(),
                 Variable => Green.into(),
                 Operator => Purple.into(),
@@ -109,6 +147,12 @@ impl Highlighter for InputHelper {
                 Whitespace => Style::new(),
                 Invalid => Red.into(),
             };
+
+            if Some(token_pos) == matching_pos {
+                style = style.bold();
+            }
+
+            token_pos += token.len();
 
             highlighted_line.push_str(&style.paint(token).to_string());
         }
