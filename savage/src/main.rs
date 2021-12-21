@@ -36,8 +36,12 @@ fn main() {
         Style::new().bold().paint("Ctrl+C"),
     );
 
+    let mut output_index = 0;
+
     loop {
-        match editor.readline("> ") {
+        println!();
+
+        match editor.readline("in: ") {
             Ok(line) => {
                 let line = line.trim();
 
@@ -49,7 +53,16 @@ fn main() {
 
                 match line.parse::<Expression>() {
                     Ok(expression) => match expression.evaluate(HashMap::new()) {
-                        Ok(result) => println!("{}", result),
+                        Ok(result) => {
+                            println!(
+                                "{}{}",
+                                Style::new()
+                                    .bold()
+                                    .paint(format!("out[{}]: ", output_index)),
+                                result,
+                            );
+                            output_index += 1;
+                        }
                         Err(error) => println!("Error: {:#?}", error),
                     },
                     Err(error) => println!("Error: {:#?}", error),
