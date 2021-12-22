@@ -7,7 +7,7 @@ use std::{collections::HashMap, fs};
 
 use ansi_term::Style;
 use directories::ProjectDirs;
-use rustyline::{error::ReadlineError, Editor};
+use rustyline::{error::ReadlineError, highlight::Highlighter, Editor};
 use savage_core::expression::Expression;
 
 use crate::input::InputHelper;
@@ -59,7 +59,10 @@ fn main() {
                                 Style::new()
                                     .bold()
                                     .paint(format!("out[{}]: ", output_index)),
-                                result,
+                                editor
+                                    .helper()
+                                    .unwrap()
+                                    .highlight(&result.to_string(), usize::MAX),
                             );
                             output_index += 1;
                         }
