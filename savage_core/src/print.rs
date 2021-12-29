@@ -175,6 +175,18 @@ impl Display for Expression {
                     .collect::<Vec<_>>()
                     .join(", "),
             ),
+            VectorElement(vector, i) => {
+                let vector_needs_parentheses = vector.precedence() < isize::MAX;
+
+                write!(
+                    f,
+                    "{}{}{}[{}]",
+                    if vector_needs_parentheses { "(" } else { "" },
+                    vector,
+                    if vector_needs_parentheses { ")" } else { "" },
+                    i,
+                )
+            }
             Matrix(m) => write!(
                 f,
                 "[{}]",
@@ -189,6 +201,19 @@ impl Display for Expression {
                     .collect::<Vec<_>>()
                     .join(", "),
             ),
+            MatrixElement(matrix, i, j) => {
+                let matrix_needs_parentheses = matrix.precedence() < isize::MAX;
+
+                write!(
+                    f,
+                    "{}{}{}[{}, {}]",
+                    if matrix_needs_parentheses { "(" } else { "" },
+                    matrix,
+                    if matrix_needs_parentheses { ")" } else { "" },
+                    i,
+                    j,
+                )
+            }
             Boolean(boolean) => write!(f, "{}", boolean),
             Negation(a) => self.fmt_prefix(f, "-", a),
             Not(a) => self.fmt_prefix(f, "!", a),

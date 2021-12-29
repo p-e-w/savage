@@ -57,8 +57,12 @@ pub enum Expression {
     Complex(Complex, RationalRepresentation),
     /// Column vector.
     Vector(Vector),
+    /// Element of a column vector expression given by an index expression.
+    VectorElement(Box<Expression>, Box<Expression>),
     /// Column-major matrix.
     Matrix(Matrix),
+    /// Element of a column-major matrix expression given by row and column index expressions.
+    MatrixElement(Box<Expression>, Box<Expression>, Box<Expression>),
     /// Boolean value.
     Boolean(bool),
     /// Arithmetic negation of an expression.
@@ -135,7 +139,9 @@ impl Expression {
             Rational(x, representation) => Num(x.into(), *representation),
             Complex(z, representation) => Num(z.clone(), *representation),
             Vector(v) => Mat(self::Matrix::from_columns(&[v.clone()])),
+            VectorElement(_, _) => Unknown,
             Matrix(m) => Mat(m.clone()),
+            MatrixElement(_, _, _) => Unknown,
             Boolean(boolean) => Bool(Some(*boolean)),
             Negation(_) => Arithmetic,
             Not(_) => Bool(None),
@@ -199,7 +205,9 @@ impl Expression {
                 }
             }
             Vector(_) => (isize::MAX, Associative),
+            VectorElement(_, _) => (5, Associative),
             Matrix(_) => (isize::MAX, Associative),
+            MatrixElement(_, _, _) => (5, Associative),
             Boolean(_) => (isize::MAX, Associative),
             Negation(_) => (3, Associative),
             Not(_) => (3, Associative),

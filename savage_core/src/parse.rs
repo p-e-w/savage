@@ -76,7 +76,7 @@ fn parser() -> impl Parser<char, Expression, Error = Error<char>> {
             .padded()
             .boxed();
 
-        let function = atomic_expression
+        let function_or_element = atomic_expression
             .clone()
             .then(
                 expression
@@ -87,15 +87,33 @@ fn parser() -> impl Parser<char, Expression, Error = Error<char>> {
             )
             .map(|(function, arguments)| fun(function, arguments))
             .labelled("function")
+            .or(atomic_expression
+                .clone()
+                .then(expression.clone().delimited_by('[', ']'))
+                .map(|(vector, i)| Expression::VectorElement(Box::new(vector), Box::new(i)))
+                .labelled("vector_element"))
+            .or(atomic_expression
+                .clone()
+                .then(
+                    expression
+                        .clone()
+                        .then_ignore(just(','))
+                        .then(expression.clone())
+                        .delimited_by('[', ']'),
+                )
+                .map(|(matrix, (i, j))| {
+                    Expression::MatrixElement(Box::new(matrix), Box::new(i), Box::new(j))
+                })
+                .labelled("matrix_element"))
             .or(atomic_expression)
             .padded()
             .boxed();
 
-        let power = function
+        let power = function_or_element
             .clone()
             .then_ignore(just('^'))
             .repeated()
-            .then(function)
+            .then(function_or_element)
             .foldr(pow)
             .labelled("power")
             .boxed();

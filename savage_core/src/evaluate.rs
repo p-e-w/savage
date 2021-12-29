@@ -34,6 +34,13 @@ pub enum Error {
         base: Expression,
         exponent: Expression,
     },
+    /// Vector or matrix expression indexed by an expression that evaluates to
+    /// an integer outside the range of valid indices for that vector or matrix.
+    IndexOutOfBounds {
+        expression: Expression,
+        vector_or_matrix: Expression,
+        index: Expression,
+    },
 }
 
 impl Expression {
@@ -76,7 +83,9 @@ impl Expression {
                 | Rational(_, _)
                 | Complex(_, _)
                 | Vector(_)
+                | VectorElement(_, _)
                 | Matrix(_)
+                | MatrixElement(_, _, _)
                 | Boolean(_)
                 | Sum(_, _)
                 | Difference(_, _)
@@ -338,7 +347,9 @@ impl Expression {
                 | Rational(_, _)
                 | Complex(_, _)
                 | Vector(_)
+                | VectorElement(_, _)
                 | Matrix(_)
+                | MatrixElement(_, _, _)
                 | Boolean(_)
                 | Negation(_)
                 | Not(_),
@@ -353,6 +364,8 @@ impl Expression {
     /// can be used to set the values of variables by their identifiers.
     fn evaluate_step(&self, context: &HashMap<String, Self>) -> Result<Self, Error> {
         use crate::expression::Expression::*;
+        use crate::expression::Type::{Boolean as Bool, Matrix as Mat, Number as Num};
+        use Error::*;
 
         match self {
             Variable(identifier) => context
@@ -379,6 +392,51 @@ impl Expression {
 
                 Ok(Vector(crate::expression::Vector::from_vec(elements)))
             }
+            VectorElement(vector, i) => {
+                let vector_original = vector;
+                let i_original = i;
+
+                let vector = vector.evaluate_step(context)?;
+                let i = i.evaluate_step(context)?;
+
+                match (vector.typ(), i.typ()) {
+                    (Num(_, _) | Bool(_), _) => Err(InvalidOperand {
+                        expression: self.clone(),
+                        operand: *vector_original.clone(),
+                    }),
+
+                    (_, Mat(_) | Bool(_)) => Err(InvalidOperand {
+                        expression: self.clone(),
+                        operand: *i_original.clone(),
+                    }),
+
+                    (Mat(vector), Num(i, _)) => {
+                        if vector.ncols() != 1 {
+                            Err(InvalidOperand {
+                                expression: self.clone(),
+                                operand: *vector_original.clone(),
+                            })
+                        } else if let Some(i) = i.to_usize() {
+                            if i >= vector.nrows() {
+                                Err(IndexOutOfBounds {
+                                    expression: self.clone(),
+                                    vector_or_matrix: *vector_original.clone(),
+                                    index: *i_original.clone(),
+                                })
+                            } else {
+                                Ok(vector[(i, 0)].clone())
+                            }
+                        } else {
+                            Err(InvalidOperand {
+                                expression: self.clone(),
+                                operand: *i_original.clone(),
+                            })
+                        }
+                    }
+
+                    _ => Ok(VectorElement(Box::new(vector), Box::new(i))),
+                }
+            }
             Matrix(m) => {
                 let mut columns = Vec::new();
 
@@ -399,6 +457,66 @@ impl Expression {
                 } else {
                     Matrix(crate::expression::Matrix::from_columns(&columns))
                 })
+            }
+            MatrixElement(matrix, i, j) => {
+                let matrix_original = matrix;
+                let i_original = i;
+                let j_original = j;
+
+                let matrix = matrix.evaluate_step(context)?;
+                let i = i.evaluate_step(context)?;
+                let j = j.evaluate_step(context)?;
+
+                match (matrix.typ(), i.typ(), j.typ()) {
+                    (Num(_, _) | Bool(_), _, _) => Err(InvalidOperand {
+                        expression: self.clone(),
+                        operand: *matrix_original.clone(),
+                    }),
+
+                    (_, Mat(_) | Bool(_), _) => Err(InvalidOperand {
+                        expression: self.clone(),
+                        operand: *i_original.clone(),
+                    }),
+
+                    (_, _, Mat(_) | Bool(_)) => Err(InvalidOperand {
+                        expression: self.clone(),
+                        operand: *j_original.clone(),
+                    }),
+
+                    (Mat(matrix), Num(i, _), Num(j, _)) => {
+                        if let Some(i) = i.to_usize() {
+                            if let Some(j) = j.to_usize() {
+                                if i >= matrix.nrows() {
+                                    Err(IndexOutOfBounds {
+                                        expression: self.clone(),
+                                        vector_or_matrix: *matrix_original.clone(),
+                                        index: *i_original.clone(),
+                                    })
+                                } else if j >= matrix.ncols() {
+                                    Err(IndexOutOfBounds {
+                                        expression: self.clone(),
+                                        vector_or_matrix: *matrix_original.clone(),
+                                        index: *j_original.clone(),
+                                    })
+                                } else {
+                                    Ok(matrix[(i, j)].clone())
+                                }
+                            } else {
+                                Err(InvalidOperand {
+                                    expression: self.clone(),
+                                    operand: *j_original.clone(),
+                                })
+                            }
+                        } else {
+                            Err(InvalidOperand {
+                                expression: self.clone(),
+                                operand: *i_original.clone(),
+                            })
+                        }
+                    }
+
+                    _ => Ok(MatrixElement(Box::new(matrix), Box::new(i), Box::new(j))),
+                }
             }
             Boolean(_) => Ok(self.clone()),
             Negation(a) => self.evaluate_step_unary(a, context),
@@ -555,6 +673,17 @@ mod tests {
             "[[a, b], [c, d], [e, f]] * [[5, 6], [7, 8]]",
             "[[a * 5 + b * 7, a * 6 + b * 8], [c * 5 + d * 7, c * 6 + d * 8], [e * 5 + f * 7, e * 6 + f * 8]]",
         );
+    }
+
+    #[test]
+    fn indices() {
+        t("[a][0]", "a");
+        t("[a, b, c][2]", "c");
+        t("[1 + 2, 2 + 3, 3 + 4, 4 + 5][1 + 2]", "9");
+
+        t("[[a]][0, 0]", "a");
+        t("[[a, b, c], [d, e, f]][1, 2]", "f");
+        t("[[1 + 2, 2 + 3], [3 + 4, 4 + 5]][0 + 0, 0 + 1]", "5");
     }
 
     #[test]
