@@ -8,7 +8,7 @@ use std::{collections::HashMap, fs};
 use ansi_term::Style;
 use directories::ProjectDirs;
 use rustyline::{error::ReadlineError, highlight::Highlighter, Editor};
-use savage_core::expression::Expression;
+use savage_core::expression::{Expression, Vector};
 
 use crate::input::InputHelper;
 
@@ -36,7 +36,14 @@ fn main() {
         Style::new().bold().paint("Ctrl+C"),
     );
 
-    let mut output_index = 0;
+    let mut outputs = Vec::new();
+
+    let mut context = HashMap::new();
+
+    context.insert(
+        "out".to_owned(),
+        Expression::Vector(Vector::from_vec(outputs.clone())),
+    );
 
     loop {
         println!();
@@ -52,19 +59,25 @@ fn main() {
                 editor.add_history_entry(line);
 
                 match line.parse::<Expression>() {
-                    Ok(expression) => match expression.evaluate(HashMap::new()) {
-                        Ok(result) => {
+                    Ok(expression) => match expression.evaluate(context.clone()) {
+                        Ok(output) => {
                             println!(
                                 "{}{}",
                                 Style::new()
                                     .bold()
-                                    .paint(format!("out[{}]: ", output_index)),
+                                    .paint(format!("out[{}]: ", outputs.len())),
                                 editor
                                     .helper()
                                     .unwrap()
-                                    .highlight(&result.to_string(), usize::MAX),
+                                    .highlight(&output.to_string(), usize::MAX),
                             );
-                            output_index += 1;
+
+                            outputs.push(output);
+
+                            context.insert(
+                                "out".to_owned(),
+                                Expression::Vector(Vector::from_vec(outputs.clone())),
+                            );
                         }
                         Err(error) => println!("Error: {:#?}", error),
                     },
