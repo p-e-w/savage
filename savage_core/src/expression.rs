@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2021  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
+use std::{collections::HashMap, rc::Rc};
+
+use derivative::*;
 use num::{Signed, Zero};
+
+use crate::evaluate::Error;
 
 /// Arbitrary-precision integer.
 pub type Integer = num::bigint::BigInt;
@@ -43,12 +48,19 @@ impl RationalRepresentation {
 }
 
 /// Symbolic expression.
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(Derivative)]
+#[derivative(PartialEq, Eq, Clone, Debug)]
 pub enum Expression {
     /// Variable with identifier.
     Variable(String),
-    /// Function evaluation with arguments.
-    Function(Box<Expression>, Vec<Expression>),
+    /// Function with identifier and implementation.
+    Function(
+        String,
+        #[derivative(PartialEq = "ignore", Debug = "ignore")]
+        Rc<dyn Fn(&Self, &[Self], &HashMap<String, Self>) -> Result<Self, Error>>,
+    ),
+    /// Value of a function expression at the given arguments.
+    FunctionValue(Box<Self>, Vec<Self>),
     /// Integer.
     Integer(Integer),
     /// Rational number with preferred representation.
@@ -58,50 +70,63 @@ pub enum Expression {
     /// Column vector.
     Vector(Vector),
     /// Element of a column vector expression given by an index expression.
-    VectorElement(Box<Expression>, Box<Expression>),
+    VectorElement(Box<Self>, Box<Self>),
     /// Column-major matrix.
     Matrix(Matrix),
     /// Element of a column-major matrix expression given by row and column index expressions.
-    MatrixElement(Box<Expression>, Box<Expression>, Box<Expression>),
+    MatrixElement(Box<Self>, Box<Self>, Box<Self>),
     /// Boolean value.
     Boolean(bool),
     /// Arithmetic negation of an expression.
-    Negation(Box<Expression>),
+    Negation(Box<Self>),
     /// Logical negation (NOT) of an expression.
-    Not(Box<Expression>),
+    Not(Box<Self>),
     /// Sum of two expressions.
-    Sum(Box<Expression>, Box<Expression>),
+    Sum(Box<Self>, Box<Self>),
     /// Difference of two expressions.
-    Difference(Box<Expression>, Box<Expression>),
+    Difference(Box<Self>, Box<Self>),
     /// Product of two expressions.
-    Product(Box<Expression>, Box<Expression>),
+    Product(Box<Self>, Box<Self>),
     /// Quotient of two expressions.
-    Quotient(Box<Expression>, Box<Expression>),
+    Quotient(Box<Self>, Box<Self>),
     /// Remainder of the Euclidean division of the first expression by the second.
-    Remainder(Box<Expression>, Box<Expression>),
+    Remainder(Box<Self>, Box<Self>),
     /// The first expression raised to the power of the second.
-    Power(Box<Expression>, Box<Expression>),
+    Power(Box<Self>, Box<Self>),
     /// Whether two expressions are equal.
-    Equal(Box<Expression>, Box<Expression>),
+    Equal(Box<Self>, Box<Self>),
     /// Whether two expressions are not equal.
-    NotEqual(Box<Expression>, Box<Expression>),
+    NotEqual(Box<Self>, Box<Self>),
     /// Whether the first expression is less than the second.
-    LessThan(Box<Expression>, Box<Expression>),
+    LessThan(Box<Self>, Box<Self>),
     /// Whether the first expression is less than or equal to the second.
-    LessThanOrEqual(Box<Expression>, Box<Expression>),
+    LessThanOrEqual(Box<Self>, Box<Self>),
     /// Whether the first expression is greater than the second.
-    GreaterThan(Box<Expression>, Box<Expression>),
+    GreaterThan(Box<Self>, Box<Self>),
     /// Whether the first expression is greater than or equal to the second.
-    GreaterThanOrEqual(Box<Expression>, Box<Expression>),
+    GreaterThanOrEqual(Box<Self>, Box<Self>),
     /// Logical conjunction (AND) of two expressions.
-    And(Box<Expression>, Box<Expression>),
+    And(Box<Self>, Box<Self>),
     /// Logical disjunction (OR) of two expressions.
-    Or(Box<Expression>, Box<Expression>),
+    Or(Box<Self>, Box<Self>),
 }
 
 /// Basic expression type designed to make evaluating expressions easier.
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(Derivative)]
+#[derivative(PartialEq, Eq, Clone, Debug)]
 pub(crate) enum Type {
+    /// Function with identifier and implementation.
+    Function(
+        String,
+        #[derivative(PartialEq = "ignore", Debug = "ignore")]
+        Rc<
+            dyn Fn(
+                &Expression,
+                &[Expression],
+                &HashMap<String, Expression>,
+            ) -> Result<Expression, Error>,
+        >,
+    ),
     /// Number with preferred representation for rational parts.
     Number(Complex, RationalRepresentation),
     /// Column-major matrix.
@@ -130,11 +155,14 @@ impl Expression {
     pub(crate) fn typ(&self) -> Type {
         use Expression::*;
         use RationalRepresentation::*;
-        use Type::{Arithmetic, Boolean as Bool, Matrix as Mat, Number as Num, Unknown};
+        use Type::{
+            Arithmetic, Boolean as Bool, Function as Fun, Matrix as Mat, Number as Num, Unknown,
+        };
 
         match self {
             Variable(_) => Unknown,
-            Function(_, _) => Unknown,
+            Function(identifier, f) => Fun(identifier.clone(), f.clone()),
+            FunctionValue(_, _) => Unknown,
             Integer(n) => Num(self::Rational::from_integer(n.clone()).into(), Fraction),
             Rational(x, representation) => Num(x.into(), *representation),
             Complex(z, representation) => Num(z.clone(), *representation),
@@ -172,7 +200,8 @@ impl Expression {
 
         match self {
             Variable(_) => (isize::MAX, Associative),
-            Function(_, _) => (5, Associative),
+            Function(_, _) => (isize::MAX, Associative),
+            FunctionValue(_, _) => (5, Associative),
             Integer(n) => {
                 if n.is_negative() {
                     (2, Associative)

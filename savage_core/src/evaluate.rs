@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2021  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
-use num::{One, ToPrimitive, Zero};
+use num::{One, Signed, ToPrimitive, Zero};
 
 use crate::expression::{Complex, Expression, RationalRepresentation};
 
@@ -40,6 +40,20 @@ pub enum Error {
         expression: Expression,
         vector_or_matrix: Expression,
         index: Expression,
+    },
+    /// Function expression evaluated with a number of arguments
+    /// that is invalid for the function.
+    InvalidNumberOfArguments {
+        expression: Expression,
+        min_number: usize,
+        max_number: usize,
+        given_number: usize,
+    },
+    /// Function expression evaluated with an argument
+    /// that is invalid for the function in that position.
+    InvalidArgument {
+        expression: Expression,
+        argument: Expression,
     },
 }
 
@@ -79,6 +93,7 @@ impl Expression {
             (
                 Variable(_)
                 | Function(_, _)
+                | FunctionValue(_, _)
                 | Integer(_)
                 | Rational(_, _)
                 | Complex(_, _)
@@ -343,6 +358,7 @@ impl Expression {
             (
                 Variable(_)
                 | Function(_, _)
+                | FunctionValue(_, _)
                 | Integer(_)
                 | Rational(_, _)
                 | Complex(_, _)
@@ -364,14 +380,38 @@ impl Expression {
     /// can be used to set the values of variables by their identifiers.
     fn evaluate_step(&self, context: &HashMap<String, Self>) -> Result<Self, Error> {
         use crate::expression::Expression::*;
-        use crate::expression::Type::{Boolean as Bool, Matrix as Mat, Number as Num};
+        use crate::expression::Type::{
+            Boolean as Bool, Function as Fun, Matrix as Mat, Number as Num,
+        };
         use Error::*;
 
         match self {
             Variable(identifier) => context
                 .get(identifier)
                 .map_or_else(|| Ok(self.clone()), |x| x.evaluate_step(context)),
-            Function(_, _) => Ok(self.clone()), // TODO
+            Function(_, _) => Ok(self.clone()),
+            FunctionValue(function, arguments) => {
+                let function_original = function;
+
+                let function = function.evaluate_step(context)?;
+
+                let mut arguments_evaluated = Vec::new();
+
+                for argument in arguments {
+                    arguments_evaluated.push(argument.evaluate_step(context)?);
+                }
+
+                match function.typ() {
+                    Num(_, _) | Mat(_) | Bool(_) => Err(InvalidOperand {
+                        expression: self.clone(),
+                        operand: *function_original.clone(),
+                    }),
+
+                    Fun(_, f) => f(self, &arguments_evaluated, context),
+
+                    _ => Ok(FunctionValue(Box::new(function), arguments_evaluated)),
+                }
+            }
             Integer(_) => Ok(self.clone()),
             Rational(x, _) => Ok(if x.denom().is_one() {
                 Integer(x.numer().clone())
@@ -542,11 +582,50 @@ impl Expression {
     /// if the expression cannot be evaluated. The `context` argument
     /// can be used to set the values of variables by their identifiers.
     pub fn evaluate(&self, context: HashMap<String, Self>) -> Result<Self, Error> {
+        use crate::expression::Type::{
+            Boolean as Bool, Function as Fun, Matrix as Mat, Number as Num,
+        };
+        use Error::*;
+
         let mut default_context = HashMap::new();
 
         default_context.insert(
             "i".to_owned(),
             Expression::Complex(Complex::i(), RationalRepresentation::Fraction),
+        );
+
+        default_context.insert(
+            "abs".to_owned(),
+            Expression::Function(
+                "abs".to_owned(),
+                Rc::new(|expression, arguments, _| {
+                    if arguments.len() != 1 {
+                        return Err(InvalidNumberOfArguments {
+                            expression: expression.clone(),
+                            min_number: 1,
+                            max_number: 1,
+                            given_number: arguments.len(),
+                        });
+                    }
+
+                    match arguments[0].typ() {
+                        Fun(_, _) | Mat(_) | Bool(_) => Err(InvalidArgument {
+                            expression: expression.clone(),
+                            argument: arguments[0].clone(),
+                        }),
+
+                        Num(z, representation) => {
+                            if z.im.is_zero() {
+                                Ok(Expression::Rational(z.re.abs(), representation))
+                            } else {
+                                Ok(expression.clone())
+                            }
+                        }
+
+                        _ => Ok(expression.clone()),
+                    }
+                }),
+            ),
         );
 
         for (identifier, expression) in context {

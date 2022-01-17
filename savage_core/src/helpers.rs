@@ -138,9 +138,9 @@ pub fn var(identifier: impl Into<String>) -> Expression {
     Expression::Variable(identifier.into())
 }
 
-/// Returns an expression representing the evaluation of the given function at the given arguments.
+/// Returns an expression representing the value of the given function at the given arguments.
 pub fn fun(function: impl Into<Expression>, arguments: impl Into<Vec<Expression>>) -> Expression {
-    Expression::Function(Box::new(function.into()), arguments.into())
+    Expression::FunctionValue(Box::new(function.into()), arguments.into())
 }
 
 /// Returns an expression representing the given integer.

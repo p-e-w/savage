@@ -84,7 +84,8 @@ impl Display for Expression {
 
         match self {
             Variable(identifier) => write!(f, "{}", identifier),
-            Function(function, arguments) => {
+            Function(identifier, _) => write!(f, "{}", identifier),
+            FunctionValue(function, arguments) => {
                 let function_needs_parentheses = function.precedence() < isize::MAX;
 
                 write!(
