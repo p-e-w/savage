@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2021  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
-use num::{One, Signed, ToPrimitive, Zero};
+use num::{One, ToPrimitive, Zero};
 
-use crate::expression::{Complex, Expression, RationalRepresentation};
+use crate::{
+    expression::{Complex, Expression, RationalRepresentation},
+    functions::functions,
+};
 
 /// Error that occurred while trying to evaluate an expression.
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -582,11 +585,6 @@ impl Expression {
     /// if the expression cannot be evaluated. The `context` argument
     /// can be used to set the values of variables by their identifiers.
     pub fn evaluate(&self, context: HashMap<String, Self>) -> Result<Self, Error> {
-        use crate::expression::Type::{
-            Boolean as Bool, Function as Fun, Matrix as Mat, Number as Num,
-        };
-        use Error::*;
-
         let mut default_context = HashMap::new();
 
         default_context.insert(
@@ -594,39 +592,12 @@ impl Expression {
             Expression::Complex(Complex::i(), RationalRepresentation::Fraction),
         );
 
-        default_context.insert(
-            "abs".to_owned(),
-            Expression::Function(
-                "abs".to_owned(),
-                Rc::new(|expression, arguments, _| {
-                    if arguments.len() != 1 {
-                        return Err(InvalidNumberOfArguments {
-                            expression: expression.clone(),
-                            min_number: 1,
-                            max_number: 1,
-                            given_number: arguments.len(),
-                        });
-                    }
-
-                    match arguments[0].typ() {
-                        Fun(_, _) | Mat(_) | Bool(_) => Err(InvalidArgument {
-                            expression: expression.clone(),
-                            argument: arguments[0].clone(),
-                        }),
-
-                        Num(z, representation) => {
-                            if z.im.is_zero() {
-                                Ok(Expression::Rational(z.re.abs(), representation))
-                            } else {
-                                Ok(expression.clone())
-                            }
-                        }
-
-                        _ => Ok(expression.clone()),
-                    }
-                }),
-            ),
-        );
+        for function in functions() {
+            default_context.insert(
+                function.metadata.name.to_owned(),
+                Expression::Function(function.metadata.name.to_owned(), function.implementation),
+            );
+        }
 
         for (identifier, expression) in context {
             default_context.insert(identifier, expression);

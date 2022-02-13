@@ -7,8 +7,10 @@ use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Rem, RemAssign, Sub, SubAssign,
 };
 
+use num::{One, Zero};
+
 use crate::expression::{
-    Complex, Expression, Integer, Matrix, Rational, RationalRepresentation, Vector,
+    Complex, Expression, Integer, Matrix, Rational, RationalRepresentation, Type, Vector,
 };
 
 impl Neg for Expression {
@@ -97,9 +99,31 @@ impl RemAssign for Expression {
     }
 }
 
+impl From<&Self> for Expression {
+    fn from(expression: &Self) -> Self {
+        expression.clone()
+    }
+}
+
 impl From<Integer> for Expression {
     fn from(integer: Integer) -> Self {
         Expression::Integer(integer)
+    }
+}
+
+impl TryFrom<Expression> for Integer {
+    type Error = Expression;
+
+    fn try_from(expression: Expression) -> Result<Self, Self::Error> {
+        if let Type::Number(z, _) = expression.typ() {
+            if z.im.is_zero() && z.re.denom().is_one() {
+                Ok(z.re.numer().clone())
+            } else {
+                Err(expression)
+            }
+        } else {
+            Err(expression)
+        }
     }
 }
 
@@ -109,9 +133,37 @@ impl From<Rational> for Expression {
     }
 }
 
+impl TryFrom<Expression> for Rational {
+    type Error = Expression;
+
+    fn try_from(expression: Expression) -> Result<Self, Self::Error> {
+        if let Type::Number(z, _) = expression.typ() {
+            if z.im.is_zero() {
+                Ok(z.re)
+            } else {
+                Err(expression)
+            }
+        } else {
+            Err(expression)
+        }
+    }
+}
+
 impl From<Complex> for Expression {
     fn from(complex: Complex) -> Self {
         Expression::Complex(complex, RationalRepresentation::Fraction)
+    }
+}
+
+impl TryFrom<Expression> for Complex {
+    type Error = Expression;
+
+    fn try_from(expression: Expression) -> Result<Self, Self::Error> {
+        if let Type::Number(z, _) = expression.typ() {
+            Ok(z)
+        } else {
+            Err(expression)
+        }
     }
 }
 
@@ -121,15 +173,55 @@ impl From<Vector> for Expression {
     }
 }
 
+impl TryFrom<Expression> for Vector {
+    type Error = Expression;
+
+    fn try_from(expression: Expression) -> Result<Self, Self::Error> {
+        if let Type::Matrix(m) = expression.typ() {
+            if m.ncols() == 1 {
+                Ok(m.column(0).clone_owned())
+            } else {
+                Err(expression)
+            }
+        } else {
+            Err(expression)
+        }
+    }
+}
+
 impl From<Matrix> for Expression {
     fn from(matrix: Matrix) -> Self {
         Expression::Matrix(matrix)
     }
 }
 
+impl TryFrom<Expression> for Matrix {
+    type Error = Expression;
+
+    fn try_from(expression: Expression) -> Result<Self, Self::Error> {
+        if let Type::Matrix(m) = expression.typ() {
+            Ok(m)
+        } else {
+            Err(expression)
+        }
+    }
+}
+
 impl From<bool> for Expression {
     fn from(boolean: bool) -> Self {
         Expression::Boolean(boolean)
+    }
+}
+
+impl TryFrom<Expression> for bool {
+    type Error = Expression;
+
+    fn try_from(expression: Expression) -> Result<Self, Self::Error> {
+        if let Expression::Boolean(boolean) = expression {
+            Ok(boolean)
+        } else {
+            Err(expression)
+        }
     }
 }
 

@@ -3,6 +3,7 @@
 
 mod evaluate;
 pub mod expression;
+pub mod functions;
 pub mod helpers;
 pub mod parse;
 mod print;

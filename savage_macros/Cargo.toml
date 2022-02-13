@@ -1,16 +1,17 @@
 [package]
-name = "savage_core"
+name = "savage_macros"
 version = "0.1.0"
 authors = ["Philipp Emanuel Weidmann <pew@worldwidemann.com>"]
-description = "A primitive computer algebra system (library)"
+description = "A primitive computer algebra system (macro helper crate, NOT INTENDED FOR USE BY THIRD-PARTY CRATES)"
 repository = "https://github.com/p-e-w/savage"
 readme = "README.md"
 license = "AGPL-3.0-or-later"
 edition = "2021"
 
+[lib]
+proc-macro = true
+
 [dependencies]
-num = "0.4.0"
-nalgebra = "0.29.0"
-chumsky = "0.5.0"
-derivative = "2.2.0"
-savage_macros = { path = "../savage_macros", version = "0.1.0" }
+syn = "1.0.85"
+quote = "1.0.14"
+darling = "0.13.1"

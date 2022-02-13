@@ -8,6 +8,10 @@ use num::{Signed, Zero};
 
 use crate::evaluate::Error;
 
+/// Function implementation.
+pub type Function =
+    dyn Fn(&Expression, &[Expression], &HashMap<String, Expression>) -> Result<Expression, Error>;
+
 /// Arbitrary-precision integer.
 pub type Integer = num::bigint::BigInt;
 
@@ -56,8 +60,7 @@ pub enum Expression {
     /// Function with identifier and implementation.
     Function(
         String,
-        #[derivative(PartialEq = "ignore", Debug = "ignore")]
-        Rc<dyn Fn(&Self, &[Self], &HashMap<String, Self>) -> Result<Self, Error>>,
+        #[derivative(PartialEq = "ignore", Debug = "ignore")] Rc<Function>,
     ),
     /// Value of a function expression at the given arguments.
     FunctionValue(Box<Self>, Vec<Self>),
@@ -118,14 +121,7 @@ pub(crate) enum Type {
     /// Function with identifier and implementation.
     Function(
         String,
-        #[derivative(PartialEq = "ignore", Debug = "ignore")]
-        Rc<
-            dyn Fn(
-                &Expression,
-                &[Expression],
-                &HashMap<String, Expression>,
-            ) -> Result<Expression, Error>,
-        >,
+        #[derivative(PartialEq = "ignore", Debug = "ignore")] Rc<Function>,
     ),
     /// Number with preferred representation for rational parts.
     Number(Complex, RationalRepresentation),

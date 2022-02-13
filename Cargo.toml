@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "savage_macros",
     "savage_core",
     "savage",
 ]
