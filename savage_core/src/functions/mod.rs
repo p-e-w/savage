@@ -90,3 +90,33 @@ fn wrap_proxy(
 pub fn functions() -> Vec<Function> {
     functions!(logic::and)
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use crate::expression::Expression;
+    use crate::functions::functions;
+
+    #[track_caller]
+    fn t(expression: &str, result: &str) {
+        assert_eq!(
+            expression
+                .parse::<Expression>()
+                .unwrap()
+                .evaluate(HashMap::new())
+                .unwrap()
+                .to_string(),
+            result,
+        );
+    }
+
+    #[test]
+    fn examples() {
+        for function in functions() {
+            for (expression, result) in function.metadata.examples {
+                t(expression, result);
+            }
+        }
+    }
+}
