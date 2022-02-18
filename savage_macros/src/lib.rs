@@ -47,6 +47,7 @@ pub fn function(attr: TokenStream, item: TokenStream) -> TokenStream {
                     "Complex" => quote! { crate::functions::Parameter::Complex },
                     "Vector" => quote! { crate::functions::Parameter::Vector },
                     "Matrix" => quote! { crate::functions::Parameter::Matrix },
+                    "SquareMatrix" => quote! { crate::functions::Parameter::SquareMatrix },
                     "bool" => quote! { crate::functions::Parameter::Boolean },
                     _ => unimplemented!(),
                 }

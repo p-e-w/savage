@@ -11,6 +11,7 @@ edition = "2021"
 [dependencies]
 num = "0.4.0"
 nalgebra = "0.29.0"
+permutohedron = "0.2.4"
 chumsky = "0.5.0"
 derivative = "2.2.0"
 savage_macros = { path = "../savage_macros", version = "0.1.0" }

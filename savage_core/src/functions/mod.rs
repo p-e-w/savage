@@ -1,15 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2021-2022  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
+mod linear_algebra;
 mod logic;
 
 use std::rc::Rc;
 
 use savage_macros::functions;
 
-use crate::expression::{Expression, Function as FunctionImplementation};
+use crate::expression::{Expression, Function as FunctionImplementation, Matrix};
+
+/// Column-major square matrix with expressions as components.
+/// This type alias is intended for use in function signatures
+/// to mark matrix parameters that must be square matrices.
+pub(crate) type SquareMatrix = Matrix;
 
 /// Function parameter.
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Parameter {
     /// Any symbolic expression.
     Expression,
@@ -23,11 +30,14 @@ pub enum Parameter {
     Vector,
     /// Matrix expression, or an expression that can be interpreted as a matrix.
     Matrix,
+    /// Matrix expression containing a square matrix, or an expression that can be interpreted as a square matrix.
+    SquareMatrix,
     /// Boolean expression, or an expression that can be interpreted as a boolean value.
     Boolean,
 }
 
 /// Metadata associated with a function.
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Metadata {
     /// Name used to represent the function (also, default identifier for invoking the function).
     pub name: &'static str,
@@ -70,12 +80,28 @@ fn wrap_proxy(
         }
 
         for (argument, parameter) in arguments.iter().zip(parameters) {
-            if let (
-                Bool(None) | Arithmetic | Unknown,
-                Integer | Rational | Complex | Vector | Matrix | Boolean,
-            ) = (argument.typ(), parameter)
-            {
-                return Ok(expression.clone());
+            if let Bool(None) | Arithmetic | Unknown = argument.typ() {
+                if *parameter != Expression {
+                    return Ok(expression.clone());
+                }
+            }
+
+            let mut argument_valid = true;
+
+            match parameter {
+                SquareMatrix => {
+                    if let Ok(matrix) = crate::expression::Matrix::try_from(argument.clone()) {
+                        argument_valid = matrix.is_square() || matrix.is_empty();
+                    }
+                }
+                _ => (),
+            }
+
+            if !argument_valid {
+                return Err(InvalidArgument {
+                    expression: expression.clone(),
+                    argument: argument.clone(),
+                });
             }
         }
 
@@ -88,7 +114,7 @@ fn wrap_proxy(
 
 /// Returns all available functions.
 pub fn functions() -> Vec<Function> {
-    functions!(logic::and)
+    functions!(logic::and, linear_algebra::determinant)
 }
 
 #[cfg(test)]
