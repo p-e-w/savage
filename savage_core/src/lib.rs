@@ -7,3 +7,4 @@ pub mod functions;
 pub mod helpers;
 pub mod parse;
 mod print;
+mod simplify;

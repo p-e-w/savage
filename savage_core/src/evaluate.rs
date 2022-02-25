@@ -388,11 +388,13 @@ impl Expression {
         };
         use Error::*;
 
-        match self {
+        let expression = self.simplify();
+
+        match &expression {
             Variable(identifier) => context
                 .get(identifier)
-                .map_or_else(|| Ok(self.clone()), |x| x.evaluate_step(context)),
-            Function(_, _) => Ok(self.clone()),
+                .map_or_else(|| Ok(expression), |x| x.evaluate_step(context)),
+            Function(_, _) => Ok(expression),
             FunctionValue(function, arguments) => {
                 let function_original = function;
 
@@ -406,25 +408,25 @@ impl Expression {
 
                 match function.typ() {
                     Num(_, _) | Mat(_) | Bool(_) => Err(InvalidOperand {
-                        expression: self.clone(),
+                        expression: expression.clone(),
                         operand: *function_original.clone(),
                     }),
 
-                    Fun(_, f) => f(self, &arguments_evaluated, context),
+                    Fun(_, f) => f(&expression, &arguments_evaluated, context),
 
                     _ => Ok(FunctionValue(Box::new(function), arguments_evaluated)),
                 }
             }
-            Integer(_) => Ok(self.clone()),
+            Integer(_) => Ok(expression),
             Rational(x, _) => Ok(if x.denom().is_one() {
                 Integer(x.numer().clone())
             } else {
-                self.clone()
+                expression
             }),
             Complex(z, representation) => Ok(if z.im.is_zero() {
                 Rational(z.re.clone(), *representation)
             } else {
-                self.clone()
+                expression
             }),
             Vector(v) => {
                 let mut elements = Vec::new();
@@ -444,25 +446,25 @@ impl Expression {
 
                 match (vector.typ(), i.typ()) {
                     (Num(_, _) | Bool(_), _) => Err(InvalidOperand {
-                        expression: self.clone(),
+                        expression: expression.clone(),
                         operand: *vector_original.clone(),
                     }),
 
                     (_, Mat(_) | Bool(_)) => Err(InvalidOperand {
-                        expression: self.clone(),
+                        expression: expression.clone(),
                         operand: *i_original.clone(),
                     }),
 
                     (Mat(vector), Num(i, _)) => {
                         if vector.ncols() != 1 {
                             Err(InvalidOperand {
-                                expression: self.clone(),
+                                expression: expression.clone(),
                                 operand: *vector_original.clone(),
                             })
                         } else if let Some(i) = i.to_usize() {
                             if i >= vector.nrows() {
                                 Err(IndexOutOfBounds {
-                                    expression: self.clone(),
+                                    expression: expression.clone(),
                                     vector_or_matrix: *vector_original.clone(),
                                     index: *i_original.clone(),
                                 })
@@ -471,7 +473,7 @@ impl Expression {
                             }
                         } else {
                             Err(InvalidOperand {
-                                expression: self.clone(),
+                                expression: expression.clone(),
                                 operand: *i_original.clone(),
                             })
                         }
@@ -512,17 +514,17 @@ impl Expression {
 
                 match (matrix.typ(), i.typ(), j.typ()) {
                     (Num(_, _) | Bool(_), _, _) => Err(InvalidOperand {
-                        expression: self.clone(),
+                        expression: expression.clone(),
                         operand: *matrix_original.clone(),
                     }),
 
                     (_, Mat(_) | Bool(_), _) => Err(InvalidOperand {
-                        expression: self.clone(),
+                        expression: expression.clone(),
                         operand: *i_original.clone(),
                     }),
 
                     (_, _, Mat(_) | Bool(_)) => Err(InvalidOperand {
-                        expression: self.clone(),
+                        expression: expression.clone(),
                         operand: *j_original.clone(),
                     }),
 
@@ -531,13 +533,13 @@ impl Expression {
                             if let Some(j) = j.to_usize() {
                                 if i >= matrix.nrows() {
                                     Err(IndexOutOfBounds {
-                                        expression: self.clone(),
+                                        expression: expression.clone(),
                                         vector_or_matrix: *matrix_original.clone(),
                                         index: *i_original.clone(),
                                     })
                                 } else if j >= matrix.ncols() {
                                     Err(IndexOutOfBounds {
-                                        expression: self.clone(),
+                                        expression: expression.clone(),
                                         vector_or_matrix: *matrix_original.clone(),
                                         index: *j_original.clone(),
                                     })
@@ -546,13 +548,13 @@ impl Expression {
                                 }
                             } else {
                                 Err(InvalidOperand {
-                                    expression: self.clone(),
+                                    expression: expression.clone(),
                                     operand: *j_original.clone(),
                                 })
                             }
                         } else {
                             Err(InvalidOperand {
-                                expression: self.clone(),
+                                expression: expression.clone(),
                                 operand: *i_original.clone(),
                             })
                         }
@@ -561,23 +563,23 @@ impl Expression {
                     _ => Ok(MatrixElement(Box::new(matrix), Box::new(i), Box::new(j))),
                 }
             }
-            Boolean(_) => Ok(self.clone()),
-            Negation(a) => self.evaluate_step_unary(a, context),
-            Not(a) => self.evaluate_step_unary(a, context),
-            Sum(a, b) => self.evaluate_step_binary(a, b, context),
-            Difference(a, b) => self.evaluate_step_binary(a, b, context),
-            Product(a, b) => self.evaluate_step_binary(a, b, context),
-            Quotient(a, b) => self.evaluate_step_binary(a, b, context),
-            Remainder(a, b) => self.evaluate_step_binary(a, b, context),
-            Power(a, b) => self.evaluate_step_binary(a, b, context),
-            Equal(a, b) => self.evaluate_step_binary(a, b, context),
-            NotEqual(a, b) => self.evaluate_step_binary(a, b, context),
-            LessThan(a, b) => self.evaluate_step_binary(a, b, context),
-            LessThanOrEqual(a, b) => self.evaluate_step_binary(a, b, context),
-            GreaterThan(a, b) => self.evaluate_step_binary(a, b, context),
-            GreaterThanOrEqual(a, b) => self.evaluate_step_binary(a, b, context),
-            And(a, b) => self.evaluate_step_binary(a, b, context),
-            Or(a, b) => self.evaluate_step_binary(a, b, context),
+            Boolean(_) => Ok(expression),
+            Negation(a) => expression.evaluate_step_unary(a, context),
+            Not(a) => expression.evaluate_step_unary(a, context),
+            Sum(a, b) => expression.evaluate_step_binary(a, b, context),
+            Difference(a, b) => expression.evaluate_step_binary(a, b, context),
+            Product(a, b) => expression.evaluate_step_binary(a, b, context),
+            Quotient(a, b) => expression.evaluate_step_binary(a, b, context),
+            Remainder(a, b) => expression.evaluate_step_binary(a, b, context),
+            Power(a, b) => expression.evaluate_step_binary(a, b, context),
+            Equal(a, b) => expression.evaluate_step_binary(a, b, context),
+            NotEqual(a, b) => expression.evaluate_step_binary(a, b, context),
+            LessThan(a, b) => expression.evaluate_step_binary(a, b, context),
+            LessThanOrEqual(a, b) => expression.evaluate_step_binary(a, b, context),
+            GreaterThan(a, b) => expression.evaluate_step_binary(a, b, context),
+            GreaterThanOrEqual(a, b) => expression.evaluate_step_binary(a, b, context),
+            And(a, b) => expression.evaluate_step_binary(a, b, context),
+            Or(a, b) => expression.evaluate_step_binary(a, b, context),
         }
     }
 
@@ -700,12 +702,6 @@ mod tests {
 
     #[test]
     fn linear_algebra() {
-        t("[] + []", "[]");
-        t("[] - []", "[]");
-        t("[] * []", "[]");
-        t("[] * 1", "[]");
-        t("1 * []", "[]");
-
         t("[1] + [2]", "[3]");
         t("[1] - [2]", "[-1]");
         t("[1] * [2]", "[2]");
