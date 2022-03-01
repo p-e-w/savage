@@ -44,7 +44,7 @@ fn parser() -> impl Parser<char, Expression, Error = Error<char>> {
             .clone()
             .separated_by(just(','))
             .padded()
-            .delimited_by('[', ']')
+            .delimited_by(just('['), just(']'))
             .map(|elements| {
                 if let Some(Expression::Vector(v)) = elements.first() {
                     // If all elements of the vector are themselves vectors, and have the same size,
@@ -72,49 +72,61 @@ fn parser() -> impl Parser<char, Expression, Error = Error<char>> {
         let atomic_expression = identifier
             .or(number)
             .or(vector_or_matrix)
-            .or(expression.clone().delimited_by('(', ')'))
+            .or(expression.clone().delimited_by(just('('), just(')')))
             .padded()
             .boxed();
 
         let function_or_element = atomic_expression
-            .clone()
             .then(
                 expression
                     .clone()
                     .separated_by(just(','))
                     .padded()
-                    .delimited_by('(', ')'),
-            )
-            .map(|(function, arguments)| fun(function, arguments))
-            .labelled("function")
-            .or(atomic_expression
-                .clone()
-                .then(expression.clone().delimited_by('[', ']'))
-                .map(|(vector, i)| Expression::VectorElement(Box::new(vector), Box::new(i)))
-                .labelled("vector_element"))
-            .or(atomic_expression
-                .clone()
-                .then(
-                    expression
+                    .delimited_by(just('('), just(')'))
+                    .map(|arguments| (Some(arguments), None))
+                    .or(expression
                         .clone()
-                        .then_ignore(just(','))
-                        .then(expression.clone())
-                        .delimited_by('[', ']'),
-                )
-                .map(|(matrix, (i, j))| {
-                    Expression::MatrixElement(Box::new(matrix), Box::new(i), Box::new(j))
-                })
-                .labelled("matrix_element"))
-            .or(atomic_expression)
+                        .separated_by(just(','))
+                        .at_least(1)
+                        .at_most(2)
+                        .delimited_by(just('['), just(']'))
+                        .map(|indices| (None, Some(indices))))
+                    .or_not(),
+            )
+            .map(
+                |(expression, arguments_or_indices)| match arguments_or_indices {
+                    Some((Some(arguments), None)) => fun(expression, arguments),
+                    Some((None, Some(indices))) => {
+                        if indices.len() == 1 {
+                            Expression::VectorElement(
+                                Box::new(expression),
+                                Box::new(indices[0].clone()),
+                            )
+                        } else {
+                            Expression::MatrixElement(
+                                Box::new(expression),
+                                Box::new(indices[0].clone()),
+                                Box::new(indices[1].clone()),
+                            )
+                        }
+                    }
+                    None => expression,
+                    _ => unreachable!(),
+                },
+            )
             .padded()
             .boxed();
 
         let power = function_or_element
-            .clone()
-            .then_ignore(just('^'))
-            .repeated()
-            .then(function_or_element)
-            .foldr(pow)
+            .separated_by(just('^'))
+            .at_least(1)
+            .map(|expressions| {
+                expressions
+                    .into_iter()
+                    .rev()
+                    .reduce(|a, b| pow(b, a))
+                    .unwrap()
+            })
             .labelled("power")
             .boxed();
 
@@ -361,5 +373,16 @@ mod tests {
         t("A||B ||C", or(or(var("A"), var("B")), var("C")));
         t("A&& ( B|| C)", and(var("A"), or(var("B"), var("C"))));
         t("   A|| B &&C", or(var("A"), and(var("B"), var("C"))));
+    }
+
+    // TODO: Replace with a real benchmark once `#[bench]` is stable.
+    #[test]
+    fn benchmark() {
+        for depth in 0..20 {
+            t(
+                &format!("{}a{}", "(".repeat(depth), ")".repeat(depth)),
+                var("a"),
+            );
+        }
     }
 }
