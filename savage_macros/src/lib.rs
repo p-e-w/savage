@@ -62,7 +62,7 @@ pub fn function(attr: TokenStream, item: TokenStream) -> TokenStream {
     let arguments =
         (0..item_fn.sig.inputs.len()).map(|i| quote! { arguments[#i].clone().try_into()? });
 
-    quote! {
+    let tokens = quote! {
         #item_fn
 
         pub(crate) const #metadata_name: crate::functions::Metadata = crate::functions::Metadata {
@@ -77,8 +77,9 @@ pub fn function(attr: TokenStream, item: TokenStream) -> TokenStream {
             ::std::result::Result<crate::expression::Expression, crate::expression::Expression> {
             ::std::result::Result::Ok(#name(#(#arguments),*).into())
         }
-    }
-    .into()
+    };
+
+    tokens.into()
 }
 
 /// Returns a vector of function definitions generated from the base function paths provided as arguments.
@@ -104,12 +105,13 @@ pub fn functions(input: TokenStream) -> TokenStream {
         });
     }
 
-    quote! {{
+    let tokens = quote! {{
         let mut functions = Vec::new();
 
         #(#statements)*
 
         functions
-    }}
-    .into()
+    }};
+
+    tokens.into()
 }
