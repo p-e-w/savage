@@ -136,6 +136,7 @@ pub(crate) enum Type {
 }
 
 /// Associativity of an operator expression.
+#[allow(clippy::enum_variant_names)]
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub(crate) enum Associativity {
     /// `a OP b OP c == (a OP b) OP c`.

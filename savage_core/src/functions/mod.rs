@@ -88,6 +88,8 @@ fn wrap_proxy(
 
             let mut argument_valid = true;
 
+            // TODO: Remove when more cases are added.
+            #[allow(clippy::single_match)]
             match parameter {
                 SquareMatrix => {
                     if let Ok(matrix) = crate::expression::Matrix::try_from(argument.clone()) {

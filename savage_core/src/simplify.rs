@@ -98,10 +98,7 @@ impl Expression {
                 let a = *a.clone();
                 let b = *b.clone();
 
-                if a == int(0) {
-                    // FIXME: This is incorrect if `b` evaluates to zero!
-                    int(0)
-                } else if a == b {
+                if a == int(0) || a == b {
                     // FIXME: This is incorrect if `b` evaluates to zero!
                     int(0)
                 } else {
