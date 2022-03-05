@@ -43,6 +43,9 @@ pub fn function(attr: TokenStream, item: TokenStream) -> TokenStream {
                 match type_path.path.get_ident().unwrap().to_string().as_str() {
                     "Expression" => quote! { crate::functions::Parameter::Expression },
                     "Integer" => quote! { crate::functions::Parameter::Integer },
+                    "NonNegativeInteger" => {
+                        quote! { crate::functions::Parameter::NonNegativeInteger }
+                    }
                     "Rational" => quote! { crate::functions::Parameter::Rational },
                     "Complex" => quote! { crate::functions::Parameter::Complex },
                     "Vector" => quote! { crate::functions::Parameter::Vector },

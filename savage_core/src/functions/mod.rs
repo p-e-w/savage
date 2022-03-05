@@ -1,14 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2021-2022  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
+mod combinatorics;
 mod linear_algebra;
 mod logic;
 
 use std::rc::Rc;
 
+use num::Signed;
 use savage_macros::functions;
 
-use crate::expression::{Expression, Function as FunctionImplementation, Matrix};
+use crate::expression::{Expression, Function as FunctionImplementation, Integer, Matrix};
+
+/// Arbitrary-precision non-negative integer.
+/// This type alias is intended for use in function signatures
+/// to mark integer parameters that must be non-negative.
+pub(crate) type NonNegativeInteger = Integer;
 
 /// Column-major square matrix with expressions as components.
 /// This type alias is intended for use in function signatures
@@ -22,6 +29,8 @@ pub enum Parameter {
     Expression,
     /// Integer expression, or an expression that can be interpreted as an integer.
     Integer,
+    /// Non-negative integer expression, or an expression that can be interpreted as a non-negative integer.
+    NonNegativeInteger,
     /// Rational number expression, or an expression that can be interpreted as a rational number.
     Rational,
     /// Complex number expression, or an expression that can be interpreted as a complex number.
@@ -88,9 +97,12 @@ fn wrap_proxy(
 
             let mut argument_valid = true;
 
-            // TODO: Remove when more cases are added.
-            #[allow(clippy::single_match)]
             match parameter {
+                NonNegativeInteger => {
+                    if let Ok(integer) = crate::expression::Integer::try_from(argument.clone()) {
+                        argument_valid = !integer.is_negative();
+                    }
+                }
                 SquareMatrix => {
                     if let Ok(matrix) = crate::expression::Matrix::try_from(argument.clone()) {
                         argument_valid = matrix.is_square() || matrix.is_empty();
@@ -116,7 +128,11 @@ fn wrap_proxy(
 
 /// Returns all available functions.
 pub fn functions() -> Vec<Function> {
-    functions!(logic::and, linear_algebra::determinant)
+    functions!(
+        logic::and,
+        combinatorics::factorial,
+        linear_algebra::determinant,
+    )
 }
 
 #[cfg(test)]
