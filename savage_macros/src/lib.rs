@@ -46,6 +46,9 @@ pub fn function(attr: TokenStream, item: TokenStream) -> TokenStream {
                     "NonNegativeInteger" => {
                         quote! { crate::functions::Parameter::NonNegativeInteger }
                     }
+                    "PositiveInteger" => {
+                        quote! { crate::functions::Parameter::PositiveInteger }
+                    }
                     "Rational" => quote! { crate::functions::Parameter::Rational },
                     "Complex" => quote! { crate::functions::Parameter::Complex },
                     "Vector" => quote! { crate::functions::Parameter::Vector },

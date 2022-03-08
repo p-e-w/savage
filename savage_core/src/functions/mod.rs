@@ -4,6 +4,7 @@
 mod combinatorics;
 mod linear_algebra;
 mod logic;
+mod number_theory;
 
 use std::rc::Rc;
 
@@ -16,6 +17,11 @@ use crate::expression::{Expression, Function as FunctionImplementation, Integer,
 /// This type alias is intended for use in function signatures
 /// to mark integer parameters that must be non-negative.
 pub(crate) type NonNegativeInteger = Integer;
+
+/// Arbitrary-precision positive integer.
+/// This type alias is intended for use in function signatures
+/// to mark integer parameters that must be positive.
+pub(crate) type PositiveInteger = Integer;
 
 /// Column-major square matrix with expressions as components.
 /// This type alias is intended for use in function signatures
@@ -31,6 +37,8 @@ pub enum Parameter {
     Integer,
     /// Non-negative integer expression, or an expression that can be interpreted as a non-negative integer.
     NonNegativeInteger,
+    /// Positive integer expression, or an expression that can be interpreted as a positive integer.
+    PositiveInteger,
     /// Rational number expression, or an expression that can be interpreted as a rational number.
     Rational,
     /// Complex number expression, or an expression that can be interpreted as a complex number.
@@ -103,6 +111,11 @@ fn wrap_proxy(
                         argument_valid = !integer.is_negative();
                     }
                 }
+                PositiveInteger => {
+                    if let Ok(integer) = crate::expression::Integer::try_from(argument.clone()) {
+                        argument_valid = integer.is_positive();
+                    }
+                }
                 SquareMatrix => {
                     if let Ok(matrix) = crate::expression::Matrix::try_from(argument.clone()) {
                         argument_valid = matrix.is_square() || matrix.is_empty();
@@ -132,7 +145,25 @@ pub fn functions() -> Vec<Function> {
         logic::and,
         combinatorics::factorial,
         linear_algebra::determinant,
+        number_theory::is_prime,
+        number_theory::nth_prime,
+        number_theory::prime_pi,
     )
+}
+
+/// Returns an expression representing the function with the given name,
+/// or `None` if the function library contains no function with that name.
+pub fn function_expression(name: &str) -> Option<Expression> {
+    for function in functions() {
+        if function.metadata.name == name {
+            return Some(Expression::Function(
+                function.metadata.name.to_owned(),
+                function.implementation,
+            ));
+        }
+    }
+
+    None
 }
 
 #[cfg(test)]
