@@ -4,3 +4,9 @@ members = [
     "savage_core",
     "savage",
 ]
+
+[profile.release]
+codegen-units = 1
+opt-level = 3
+lto = true
+#strip = true

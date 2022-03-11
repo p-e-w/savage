@@ -1,9 +1,9 @@
-## Savage Computer Algebra System
+# Savage Computer Algebra System
 
 Savage is a new computer algebra system written from scratch in pure Rust.
 Its goals are correctness, simplicity, and usability, in that order.
 The entire system compiles to a single, dependency-free executable just
-3 MB in size. While that executable will of course grow as Savage matures,
+2.5 MB in size. While that executable will of course grow as Savage matures,
 the plan is to eventually deliver a useful computer algebra system in 5 MB
 or less.
 
