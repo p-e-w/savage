@@ -7,6 +7,8 @@ The entire system compiles to a single, dependency-free executable just
 the plan is to eventually deliver a useful computer algebra system in 5 MB
 or less.
 
+![Screenshot](https://user-images.githubusercontent.com/2702526/158006796-7d3aad2a-217f-421a-b3f8-20498d32b0f0.png)
+
 The name "Savage" is a reference/homage to [Sage](https://www.sagemath.org/),
 the leading open-source computer algebra system. Since Sage already exists
 and works very well, it would make no sense to attempt to create a clone of it.
