@@ -1,6 +1,6 @@
 [package]
 name = "savage"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Philipp Emanuel Weidmann <pew@worldwidemann.com>"]
 description = "A primitive computer algebra system (REPL)"
 repository = "https://github.com/p-e-w/savage"
@@ -15,4 +15,4 @@ ansi_term = "0.12.1"
 rustyline = "9.0.0"
 rustyline-derive = "0.6.0"
 regex = "1.5.4"
-savage_core = { path = "../savage_core", version = "0.1.0" }
+savage_core = { path = "../savage_core", version = "0.2.0" }

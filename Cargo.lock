@@ -608,7 +608,7 @@ dependencies = [
 
 [[package]]
 name = "savage"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ansi_term",
  "directories",
@@ -621,7 +621,7 @@ dependencies = [
 
 [[package]]
 name = "savage_core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chumsky",
  "derivative",
