@@ -15,4 +15,5 @@ ansi_term = "0.12.1"
 rustyline = "9.0.0"
 rustyline-derive = "0.6.0"
 regex = "1.5.4"
+ariadne = "0.1.5"
 savage_core = { path = "../savage_core", version = "0.2.0" }
