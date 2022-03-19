@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2021-2022  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
-use std::str::FromStr;
+use std::{ops::Range, str::FromStr};
 
-pub use chumsky::error::{Simple as Error, SimpleReason as ErrorReason};
 use chumsky::prelude::*;
 
 use crate::{
@@ -11,8 +10,19 @@ use crate::{
     helpers::*,
 };
 
+/// Error that occurred while trying to parse a character stream into an expression.
+pub type Error = chumsky::error::Simple<char, Range<usize>>;
+
+/// Reason why a parse error occurred.
+pub type ErrorReason = chumsky::error::SimpleReason<char, Range<usize>>;
+
+/// Returns a parser that produces expressions from character streams.
+///
+/// The purpose of this function is to be a building block for parsers that parse
+/// expressions as parts of a more complex input language. If you simply want
+/// to turn strings into expressions, use `"a + b".parse::<Expression>()`.
 #[allow(clippy::let_and_return)]
-fn parser() -> impl Parser<char, Expression, Error = Error<char>> {
+pub fn parser() -> impl Parser<char, Expression, Error = Error> {
     recursive(|expression| {
         let identifier = text::ident()
             .map(|identifier: String| match identifier.as_str() {
@@ -225,14 +235,13 @@ fn parser() -> impl Parser<char, Expression, Error = Error<char>> {
 
         disjunction
     })
-    .then_ignore(end())
 }
 
 impl FromStr for Expression {
-    type Err = Vec<Simple<char>>;
+    type Err = Vec<Error>;
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        parser().parse(string)
+        parser().then_ignore(end()).parse(string)
     }
 }
 

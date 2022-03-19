@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2021-2022  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
+mod command;
 mod input;
 
 use std::{collections::HashMap, fs};
@@ -14,9 +15,9 @@ use savage_core::{
     parse::{Error, ErrorReason},
 };
 
-use crate::input::InputHelper;
+use crate::{command::Command, input::InputHelper};
 
-fn format_parse_error(error: Error<char>) -> Report {
+fn format_parse_error(error: Error) -> Report {
     // Heavily based on https://github.com/zesterer/chumsky/blob/463226372cf293d45bd5df52bf25d5028243066e/examples/json.rs#L114-L173
     let message = if let ErrorReason::Custom(message) = error.reason() {
         message.clone()
@@ -77,6 +78,8 @@ fn format_parse_error(error: Error<char>) -> Report {
 }
 
 fn main() {
+    use crate::command::Command::*;
+
     let history_path = ProjectDirs::from("com.worldwidemann", "", "Savage")
         .expect("unable to locate data directory")
         .data_dir()
@@ -122,29 +125,51 @@ fn main() {
 
                 editor.add_history_entry(line);
 
-                match line.parse::<Expression>() {
-                    Ok(expression) => match expression.evaluate(context.clone()) {
-                        Ok(output) => {
-                            println!(
-                                "{}{}",
-                                Style::new()
-                                    .bold()
-                                    .paint(format!("out[{}]: ", outputs.len())),
-                                editor
-                                    .helper()
-                                    .unwrap()
-                                    .highlight(&output.to_string(), usize::MAX),
-                            );
+                match line.parse::<Command>() {
+                    Ok(EvaluateExpression(expression)) => {
+                        match expression.evaluate(context.clone()) {
+                            Ok(output) => {
+                                println!(
+                                    "{}{}",
+                                    Style::new()
+                                        .bold()
+                                        .paint(format!("out[{}]: ", outputs.len())),
+                                    editor
+                                        .helper()
+                                        .unwrap()
+                                        .highlight(&output.to_string(), usize::MAX),
+                                );
 
-                            outputs.push(output);
+                                outputs.push(output);
 
-                            context.insert(
-                                "out".to_owned(),
-                                Expression::Vector(Vector::from_vec(outputs.clone())),
-                            );
+                                context.insert(
+                                    "out".to_owned(),
+                                    Expression::Vector(Vector::from_vec(outputs.clone())),
+                                );
+                            }
+                            Err(error) => println!("Error: {:#?}", error),
                         }
-                        Err(error) => println!("Error: {:#?}", error),
-                    },
+                    }
+                    Ok(DefineVariable(identifier, expression)) => {
+                        println!(
+                            "Define variable {} as {}: Not implemented yet.",
+                            identifier, expression,
+                        );
+                    }
+                    Ok(DefineFunction(identifier, argument_identifiers, expression)) => {
+                        println!(
+                            "Define function {} with arguments [{}] as {}: Not implemented yet.",
+                            identifier,
+                            argument_identifiers.join(", "),
+                            expression,
+                        );
+                    }
+                    Ok(ShowHelp(function_name)) => {
+                        println!(
+                            "Show help for {}: Not implemented yet.",
+                            function_name.unwrap_or("all functions".to_owned()),
+                        );
+                    }
                     Err(errors) => {
                         for error in errors {
                             format_parse_error(error)

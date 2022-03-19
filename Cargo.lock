@@ -621,6 +621,7 @@ version = "0.2.0"
 dependencies = [
  "ansi_term",
  "ariadne",
+ "chumsky",
  "directories",
  "lazy_static",
  "regex",
