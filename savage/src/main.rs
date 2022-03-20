@@ -167,7 +167,7 @@ fn main() {
                     Ok(ShowHelp(function_name)) => {
                         println!(
                             "Show help for {}: Not implemented yet.",
-                            function_name.unwrap_or("all functions".to_owned()),
+                            function_name.unwrap_or_else(|| "all functions".to_owned()),
                         );
                     }
                     Err(errors) => {

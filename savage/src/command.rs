@@ -38,11 +38,11 @@ fn parser() -> impl Parser<char, Command, Error = Error> {
             .map(|((identifier, argument_identifiers), expression)| {
                 Command::DefineFunction(identifier, argument_identifiers, expression)
             }))
-        .or(expression().map(|expression| Command::EvaluateExpression(expression)))
+        .or(expression().map(Command::EvaluateExpression))
         .or(just('?')
             .padded()
             .ignore_then(text::ident().padded().or_not())
-            .map(|function_name| Command::ShowHelp(function_name)))
+            .map(Command::ShowHelp))
 }
 
 impl FromStr for Command {
