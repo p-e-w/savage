@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2021-2022  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
-use std::{collections::HashMap, rc::Rc};
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
 use derivative::*;
 use num::{Signed, Zero};
@@ -264,5 +267,84 @@ impl Expression {
     /// of associativity doesn't apply, `Associative` is returned.
     pub(crate) fn associativity(&self) -> Associativity {
         self.precedence_and_associativity().1
+    }
+
+    /// Returns all sub-expressions that the expression contains.
+    /// The returned list is built recursively and thus includes sub-expressions
+    /// of sub-expressions and so on, as well as the expression itself.
+    pub(crate) fn parts(&self) -> Vec<Self> {
+        use Expression::*;
+
+        let mut parts = vec![self.clone()];
+
+        match self {
+            Variable(_) => {}
+            Function(_, _) => {}
+            FunctionValue(function, arguments) => {
+                parts.append(&mut function.parts());
+
+                for argument in arguments {
+                    parts.append(&mut argument.parts());
+                }
+            }
+            Integer(_) => {}
+            Rational(_, _) => {}
+            Complex(_, _) => {}
+            Vector(v) => {
+                for element in v.iter() {
+                    parts.append(&mut element.parts());
+                }
+            }
+            VectorElement(vector, i) => {
+                parts.append(&mut vector.parts());
+                parts.append(&mut i.parts());
+            }
+            Matrix(m) => {
+                for element in m.iter() {
+                    parts.append(&mut element.parts());
+                }
+            }
+            MatrixElement(matrix, i, j) => {
+                parts.append(&mut matrix.parts());
+                parts.append(&mut i.parts());
+                parts.append(&mut j.parts());
+            }
+            Boolean(_) => {}
+            Negation(a) | Not(a) => {
+                parts.append(&mut a.parts());
+            }
+            Sum(a, b)
+            | Difference(a, b)
+            | Product(a, b)
+            | Quotient(a, b)
+            | Remainder(a, b)
+            | Power(a, b)
+            | Equal(a, b)
+            | NotEqual(a, b)
+            | LessThan(a, b)
+            | LessThanOrEqual(a, b)
+            | GreaterThan(a, b)
+            | GreaterThanOrEqual(a, b)
+            | And(a, b)
+            | Or(a, b) => {
+                parts.append(&mut a.parts());
+                parts.append(&mut b.parts());
+            }
+        }
+
+        parts
+    }
+
+    /// Returns the identifiers of all variables that the expression contains.
+    pub fn variables(&self) -> HashSet<String> {
+        let mut identifiers = HashSet::new();
+
+        for part in self.parts() {
+            if let Self::Variable(identifier) = part {
+                identifiers.insert(identifier);
+            }
+        }
+
+        identifiers
     }
 }

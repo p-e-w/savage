@@ -168,8 +168,7 @@ pub fn function_expression(name: &str) -> Option<Expression> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
+    use crate::evaluate::default_context;
     use crate::expression::Expression;
     use crate::functions::functions;
 
@@ -179,7 +178,7 @@ mod tests {
             expression
                 .parse::<Expression>()
                 .unwrap()
-                .evaluate(HashMap::new())
+                .evaluate(&default_context())
                 .unwrap()
                 .to_string(),
             result,

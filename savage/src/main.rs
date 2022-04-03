@@ -4,20 +4,32 @@
 mod command;
 mod input;
 
-use std::{collections::HashMap, fs};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    iter::FromIterator,
+    rc::Rc,
+};
 
 use ansi_term::Style;
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use directories::ProjectDirs;
+use lazy_static::lazy_static;
 use rustyline::{error::ReadlineError, highlight::Highlighter, Editor};
 use savage_core::{
+    evaluate::{default_context, Error as EvaluateError},
     expression::{Expression, Vector},
-    parse::{Error, ErrorReason},
+    parse::{Error as ParseError, ErrorReason},
 };
 
 use crate::{command::Command, input::InputHelper};
 
-fn format_parse_error(error: Error) -> Report {
+lazy_static! {
+    static ref RESERVED_IDENTIFIERS: HashSet<String> =
+        HashSet::from(["true", "false", "out"].map(str::to_owned));
+}
+
+fn format_parse_error(error: ParseError) -> Report {
     // Heavily based on https://github.com/zesterer/chumsky/blob/463226372cf293d45bd5df52bf25d5028243066e/examples/json.rs#L114-L173
     let message = if let ErrorReason::Custom(message) = error.reason() {
         message.clone()
@@ -105,14 +117,14 @@ fn main() {
 
     let mut outputs = Vec::new();
 
-    let mut context = HashMap::new();
+    let mut context = default_context();
 
     context.insert(
         "out".to_owned(),
         Expression::Vector(Vector::from_vec(outputs.clone())),
     );
 
-    loop {
+    'outer: loop {
         println!();
 
         match editor.readline("in: ") {
@@ -126,43 +138,126 @@ fn main() {
                 editor.add_history_entry(line);
 
                 match line.parse::<Command>() {
-                    Ok(EvaluateExpression(expression)) => {
-                        match expression.evaluate(context.clone()) {
-                            Ok(output) => {
-                                println!(
-                                    "{}{}",
-                                    Style::new()
-                                        .bold()
-                                        .paint(format!("out[{}]: ", outputs.len())),
-                                    editor
-                                        .helper()
-                                        .unwrap()
-                                        .highlight(&output.to_string(), usize::MAX),
-                                );
+                    Ok(EvaluateExpression(expression)) => match expression.evaluate(&context) {
+                        Ok(output) => {
+                            println!(
+                                "{}{}",
+                                Style::new()
+                                    .bold()
+                                    .paint(format!("out[{}]: ", outputs.len())),
+                                editor
+                                    .helper()
+                                    .unwrap()
+                                    .highlight(&output.to_string(), usize::MAX),
+                            );
 
-                                outputs.push(output);
+                            outputs.push(output);
 
-                                context.insert(
-                                    "out".to_owned(),
-                                    Expression::Vector(Vector::from_vec(outputs.clone())),
-                                );
+                            context.insert(
+                                "out".to_owned(),
+                                Expression::Vector(Vector::from_vec(outputs.clone())),
+                            );
+                        }
+                        Err(error) => println!("Error: {:#?}", error),
+                    },
+                    Ok(DefineVariable(identifier, expression)) => {
+                        if RESERVED_IDENTIFIERS.contains(&identifier) {
+                            println!("Error: \"{}\" is a reserved identifier and cannot be used as a variable name.", identifier);
+                            continue;
+                        }
+
+                        match expression.evaluate(&context) {
+                            Ok(expression) => {
+                                let variables = expression.variables();
+
+                                if !variables.is_empty() {
+                                    println!("Error: The assigned expression contains the undefined variable(s) {}.", Vec::from_iter(variables).join(", "));
+                                    continue;
+                                }
+
+                                context.insert(identifier, expression);
                             }
                             Err(error) => println!("Error: {:#?}", error),
                         }
                     }
-                    Ok(DefineVariable(identifier, expression)) => {
-                        println!(
-                            "Define variable {} as {}: Not implemented yet.",
-                            identifier, expression,
-                        );
-                    }
                     Ok(DefineFunction(identifier, argument_identifiers, expression)) => {
-                        println!(
-                            "Define function {} with arguments [{}] as {}: Not implemented yet.",
-                            identifier,
-                            argument_identifiers.join(", "),
-                            expression,
-                        );
+                        if RESERVED_IDENTIFIERS.contains(&identifier) {
+                            println!("Error: \"{}\" is a reserved identifier and cannot be used as a function name.", identifier);
+                            continue;
+                        }
+
+                        let mut inner_context = context.clone();
+
+                        for argument_identifier in &argument_identifiers {
+                            if RESERVED_IDENTIFIERS.contains(argument_identifier) {
+                                println!("Error: \"{}\" is a reserved identifier and cannot be used as an argument name.", argument_identifier);
+                                continue 'outer;
+                            }
+
+                            if argument_identifiers
+                                .iter()
+                                .filter(|&id| id == argument_identifier)
+                                .count()
+                                > 1
+                            {
+                                println!(
+                                    "Error: The name \"{}\" is used for more than one argument.",
+                                    argument_identifier,
+                                );
+                                continue 'outer;
+                            }
+
+                            inner_context.remove(argument_identifier);
+                        }
+
+                        match expression.evaluate(&inner_context) {
+                            Ok(expression) => {
+                                let mut variables = expression.variables();
+
+                                for argument_identifier in &argument_identifiers {
+                                    variables.remove(argument_identifier);
+                                }
+
+                                if !variables.is_empty() {
+                                    println!("Error: The assigned expression contains the undefined variable(s) {}.", Vec::from_iter(variables).join(", "));
+                                    continue;
+                                }
+
+                                context.insert(
+                                    identifier.clone(),
+                                    Expression::Function(
+                                        identifier,
+                                        Rc::new(move |self_expression, arguments, _| {
+                                            if arguments.len() != argument_identifiers.len() {
+                                                return Err(
+                                                    EvaluateError::InvalidNumberOfArguments {
+                                                        expression: self_expression.clone(),
+                                                        min_number: argument_identifiers.len(),
+                                                        max_number: argument_identifiers.len(),
+                                                        given_number: arguments.len(),
+                                                    },
+                                                );
+                                            }
+
+                                            // Both the default context and the outer context the function is being
+                                            // evaluated in can be ignored, since it was already checked that the
+                                            // expression contains no variables other than the argument identifiers.
+                                            let mut context = HashMap::new();
+
+                                            for (identifier, argument) in
+                                                argument_identifiers.iter().zip(arguments)
+                                            {
+                                                context
+                                                    .insert(identifier.clone(), argument.clone());
+                                            }
+
+                                            expression.evaluate(&context)
+                                        }),
+                                    ),
+                                );
+                            }
+                            Err(error) => println!("Error: {:#?}", error),
+                        }
                     }
                     Ok(ShowHelp(function_name)) => {
                         println!(

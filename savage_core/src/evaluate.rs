@@ -60,6 +60,25 @@ pub enum Error {
     },
 }
 
+/// Returns an evaluation context populated with standard variable and function definitions.
+pub fn default_context() -> HashMap<String, Expression> {
+    let mut default_context = HashMap::new();
+
+    default_context.insert(
+        "i".to_owned(),
+        Expression::Complex(Complex::i(), RationalRepresentation::Fraction),
+    );
+
+    for function in functions() {
+        default_context.insert(
+            function.metadata.name.to_owned(),
+            Expression::Function(function.metadata.name.to_owned(), function.implementation),
+        );
+    }
+
+    default_context
+}
+
 impl Expression {
     /// Returns the result of performing a single evaluation step on
     /// the unary operator expression `self` with operand `a`, or an error
@@ -586,29 +605,11 @@ impl Expression {
     /// Returns the result of evaluating the expression, or an error
     /// if the expression cannot be evaluated. The `context` argument
     /// can be used to set the values of variables by their identifiers.
-    pub fn evaluate(&self, context: HashMap<String, Self>) -> Result<Self, Error> {
-        let mut default_context = HashMap::new();
-
-        default_context.insert(
-            "i".to_owned(),
-            Expression::Complex(Complex::i(), RationalRepresentation::Fraction),
-        );
-
-        for function in functions() {
-            default_context.insert(
-                function.metadata.name.to_owned(),
-                Expression::Function(function.metadata.name.to_owned(), function.implementation),
-            );
-        }
-
-        for (identifier, expression) in context {
-            default_context.insert(identifier, expression);
-        }
-
-        let mut old_expression = self.clone();
+    pub fn evaluate(&self, context: &HashMap<String, Self>) -> Result<Self, Error> {
+        let mut old_expression: Self = self.clone();
 
         loop {
-            let new_expression = old_expression.evaluate_step(&default_context)?;
+            let new_expression = old_expression.evaluate_step(context)?;
 
             if new_expression == old_expression {
                 return Ok(new_expression);
@@ -621,8 +622,7 @@ impl Expression {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
+    use crate::evaluate::default_context;
     use crate::expression::Expression;
 
     #[track_caller]
@@ -631,7 +631,7 @@ mod tests {
             expression
                 .parse::<Expression>()
                 .unwrap()
-                .evaluate(HashMap::new())
+                .evaluate(&default_context())
                 .unwrap()
                 .to_string(),
             result,
