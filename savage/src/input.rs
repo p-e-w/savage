@@ -154,6 +154,8 @@ impl Highlighter for InputHelper {
 
             token_pos += token.len();
 
+            // https://github.com/rust-lang/rust-clippy/issues/9317
+            #[allow(clippy::unnecessary_to_owned)]
             highlighted_line.push_str(&style.paint(token).to_string());
         }
 
