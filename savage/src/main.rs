@@ -2,6 +2,7 @@
 // Copyright (C) 2021-2022  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
 mod command;
+mod help;
 mod input;
 
 use std::{
@@ -22,7 +23,11 @@ use savage_core::{
     parse::{Error as ParseError, ErrorReason},
 };
 
-use crate::{command::Command, input::InputHelper};
+use crate::{
+    command::Command,
+    help::{show_help, FUNCTION_HELP_TEXTS, HELP_TEXT},
+    input::InputHelper,
+};
 
 lazy_static! {
     static ref RESERVED_IDENTIFIERS: HashSet<String> =
@@ -260,10 +265,20 @@ fn main() {
                         }
                     }
                     Ok(ShowHelp(function_name)) => {
-                        println!(
-                            "Show help for {}: Not implemented yet.",
-                            function_name.unwrap_or_else(|| "all functions".to_owned()),
-                        );
+                        if let Some(function_name) = function_name {
+                            if let Some(function_help_text) =
+                                FUNCTION_HELP_TEXTS.get(&function_name)
+                            {
+                                show_help(function_help_text.clone()).expect("unable to show help");
+                            } else {
+                                println!(
+                                    "Error: No help text available for the function {}.",
+                                    function_name,
+                                );
+                            }
+                        } else {
+                            show_help(HELP_TEXT.clone()).expect("unable to show help");
+                        }
                     }
                     Err(errors) => {
                         for error in errors {

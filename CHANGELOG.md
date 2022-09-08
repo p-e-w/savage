@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### REPL
 
+- Basic help system
 - Ability to define custom variables and functions
 - Proper formatting for parse errors
 
