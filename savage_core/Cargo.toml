@@ -10,7 +10,7 @@ edition = "2021"
 
 [dependencies]
 num = "0.4.0"
-nalgebra = "0.31.1"
+nalgebra = "0.31.2"
 permutohedron = "0.2.4"
 primal = "0.3.0"
 chumsky = "0.8.0"
