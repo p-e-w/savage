@@ -444,9 +444,9 @@ dependencies = [
 
 [[package]]
 name = "minimad"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd37b2e65fbd459544194d8f52ed84027e031684335a062c708774c09d172b0b"
+checksum = "fed1b13e2000bd8e238d97a97de6fc30224f89a08b0aa5aaa09ed1bd68ba2fa1"
 dependencies = [
  "once_cell",
 ]
@@ -590,9 +590,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.13.0"
+version = "1.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18a6dbe30758c9f83eb00cbea4ac95966305f5a7772f3f42ebfc7fc7eddbd8e1"
+checksum = "b7e5500299e16ebb147ae15a00a942af264cf3688f47923b8fc2cd5858f23ad3"
 
 [[package]]
 name = "parking_lot"
@@ -914,9 +914,9 @@ dependencies = [
 
 [[package]]
 name = "termimad"
-version = "0.20.2"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8a16d7de8d4c97a4149cc3b9d3681c5dba36011c303745bb1af19636e89ba39"
+checksum = "8743d628f9b0eb33087c1e1c4915d91efca23ae69f7c81981489128a0e17d300"
 dependencies = [
  "coolor",
  "crossbeam",
@@ -975,9 +975,9 @@ checksum = "8895849a949e7845e06bd6dc1aa51731a103c42707010a5b591c0038fb73385b"
 
 [[package]]
 name = "unicode-width"
-version = "0.1.9"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ed742d4ea2bd1176e236172c8429aaf54486e7ac098db29ffe6529e0ce50973"
+checksum = "c0edd1e5b14653f783770bce4a4dabb4a5108a5370a5f5d8cfe8710c361f6c8b"
 
 [[package]]
 name = "utf8parse"
