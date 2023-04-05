@@ -71,6 +71,22 @@ fn transpose(matrix: Matrix) -> Expression {
 }
 
 #[function(
+    name = "trace",
+    description = "trace of a square matrix",
+    examples = r#"[
+        ("trace([[1, 2], [3, a]])", "1 + a"),
+    ]"#,
+    categories = r#"[
+        "linear algebra",
+    ]"#
+)]
+fn trace(matrix: SquareMatrix) -> Expression {
+    matrix.diagonal().iter().fold(int(0), |acc, e| {
+        acc + e.clone()
+    })
+}
+
+#[function(
     name = "nullspace",
     description = "nullspace of a matrix",
     examples = r#"[]"#,
@@ -78,25 +94,13 @@ fn transpose(matrix: Matrix) -> Expression {
         "linear algebra",
     ]"#
 )]
-fn nullspace(matrix: Matrix) -> Expression {
-    unimplemented!()
-}
-
-#[function(
-    name = "trace",
-    description = "trace of a square matrix",
-    examples = r#"[]"#,
-    categories = r#"[
-        "linear algebra",
-    ]"#
-)]
-fn trace(_matrix: SquareMatrix) -> Expression {
+fn nullspace(_matrix: Matrix) -> Expression {
     unimplemented!()
 }
 
 #[function(
     name = "eigenvals",
-    description = "eigen values of a matrix",
+    description = "eigen values of a square matrix",
     examples = r#"[]"#,
     categories = r#"[
         "linear algebra",
@@ -108,7 +112,7 @@ fn eigenvalues(_matrix: SquareMatrix) -> Expression {
 
 #[function(
     name = "eigenvecs",
-    description = "eigen vectors of a matrix",
+    description = "eigen vectors of a square matrix",
     examples = r#"[]"#,
     categories = r#"[
         "linear algebra",
