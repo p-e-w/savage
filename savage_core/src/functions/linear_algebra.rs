@@ -4,7 +4,7 @@
 use permutohedron::heap_recursive;
 use savage_macros::function;
 
-use crate::{expression::Expression, functions::SquareMatrix, helpers::*};
+use crate::{expression::Expression, functions::Matrix, functions::SquareMatrix, helpers::*};
 
 #[function(
     name = "det",
@@ -54,4 +54,66 @@ fn determinant(matrix: SquareMatrix) -> Expression {
             }
         })
         .unwrap()
+}
+
+#[function(
+    name = "transpose",
+    description = "transpose of a matrix",
+    examples = r#"[
+        ("transpose([[1, 2], [3, 4]])", "[[1, 3], [2, 4]]"),
+    ]"#,
+    categories = r#"[
+        "linear algebra",
+    ]"#
+)]
+fn transpose(matrix: Matrix) -> Expression {
+    Expression::Matrix(matrix.transpose())
+}
+
+#[function(
+    name = "nullspace",
+    description = "nullspace of a matrix",
+    examples = r#"[]"#,
+    categories = r#"[
+        "linear algebra",
+    ]"#
+)]
+fn nullspace(matrix: Matrix) -> Expression {
+    unimplemented!()
+}
+
+#[function(
+    name = "trace",
+    description = "trace of a square matrix",
+    examples = r#"[]"#,
+    categories = r#"[
+        "linear algebra",
+    ]"#
+)]
+fn trace(_matrix: SquareMatrix) -> Expression {
+    unimplemented!()
+}
+
+#[function(
+    name = "eigenvals",
+    description = "eigen values of a matrix",
+    examples = r#"[]"#,
+    categories = r#"[
+        "linear algebra",
+    ]"#
+)]
+fn eigenvalues(_matrix: SquareMatrix) -> Expression {
+    unimplemented!()
+}
+
+#[function(
+    name = "eigenvecs",
+    description = "eigen vectors of a matrix",
+    examples = r#"[]"#,
+    categories = r#"[
+        "linear algebra",
+    ]"#
+)]
+fn eigenvectors(_matrix: SquareMatrix) -> Expression {
+    unimplemented!()
 }
