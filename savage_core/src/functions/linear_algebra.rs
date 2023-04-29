@@ -81,43 +81,8 @@ fn transpose(matrix: Matrix) -> Expression {
     ]"#
 )]
 fn trace(matrix: SquareMatrix) -> Expression {
-    matrix.diagonal().iter().fold(int(0), |acc, e| {
-        acc + e.clone()
-    })
-}
-
-#[function(
-    name = "nullspace",
-    description = "nullspace of a matrix",
-    examples = r#"[]"#,
-    categories = r#"[
-        "linear algebra",
-    ]"#
-)]
-fn nullspace(_matrix: Matrix) -> Expression {
-    unimplemented!()
-}
-
-#[function(
-    name = "eigenvals",
-    description = "eigen values of a square matrix",
-    examples = r#"[]"#,
-    categories = r#"[
-        "linear algebra",
-    ]"#
-)]
-fn eigenvalues(_matrix: SquareMatrix) -> Expression {
-    unimplemented!()
-}
-
-#[function(
-    name = "eigenvecs",
-    description = "eigen vectors of a square matrix",
-    examples = r#"[]"#,
-    categories = r#"[
-        "linear algebra",
-    ]"#
-)]
-fn eigenvectors(_matrix: SquareMatrix) -> Expression {
-    unimplemented!()
+    matrix
+        .diagonal()
+        .iter()
+        .fold(int(0), |acc, e| acc + e.clone())
 }
